@@ -10,7 +10,8 @@ int main()
     PacketManager pm;
     while (true)
     {
-        pm.sendHello("10.1.0.2");
+        std::vector<std::string> interfaces = {"192.168.1.1", "10.1.0.1"};
+        pm.sendHello("10.1.0.2", 5000, "R_1", interfaces);
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
