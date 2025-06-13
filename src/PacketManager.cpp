@@ -25,35 +25,40 @@ void PacketManager::sendHello(const std::string &destIp, int port,
         return;
     }
 
-    // Créer le message JSON
-    json j;
-    j["type"] = "HELLO";
-    j["ip"] = destIp; // ou l'IP locale à déterminer dynamiquement
-    j["hostname"] = hostname;
-    j["interfaces"] = interfaces;
+    int broadcastEnable = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) < 0)
+    {
+        perror("Error: setsockopt SO_BROADCAST");
+        close(sock);
+        return;
+    }
 
-    std::string message = j.dump();
-
+    // Le reste de votre code d'envoi existant
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
-    inet_pton(AF_INET, destIp.c_str(), &addr.sin_addr);
 
-    int sent = sendto(sock, message.c_str(), message.size(), 0,
-                      (sockaddr *)&addr, sizeof(addr));
-    if (sent < 0)
+    if (inet_pton(AF_INET, destIp.c_str(), &addr.sin_addr) <= 0)
+    {
+        std::cerr << "Invalid address: " << destIp << std::endl;
+        close(sock);
+        return;
+    }
+
+    json helloMsg = {
+        {"type", "HELLO"},
+        {"hostname", hostname},
+        {"interfaces", interfaces}};
+
+    if (sendto(sock, helloMsg.dump().c_str(), helloMsg.dump().length(), 0,
+               (sockaddr *)&addr, sizeof(addr)) < 0)
     {
         perror("sendto");
-    }
-    else
-    {
-        std::cout << "Sent HELLO (JSON) to " << destIp << ":" << port << std::endl;
     }
 
     close(sock);
 }
 
-// Add this implementation to PacketManager.cpp
 void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running)
 {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
