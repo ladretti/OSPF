@@ -8,6 +8,13 @@
 #include <atomic>
 #include <vector>
 
+std::string calculateBroadcastAddress(const std::string& ip) {
+    size_t lastDot = ip.find_last_of('.');
+    if (lastDot == std::string::npos) return ip;
+    
+    return ip.substr(0, lastDot + 1) + "255";
+}
+
 int main(int argc, char* argv[])
 {
     std::string routerId = "R_1";
@@ -44,10 +51,16 @@ int main(int argc, char* argv[])
         std::cout << "Starting receiver thread on port " << port << std::endl;
         pm.receivePackets(port, lsm, running);
     });
+
+    
     
     while (true)
     {
-        pm.sendHello("255.255.255.255", port, hostname, interfaces);
+        for (const auto& iface : interfaces) {
+            std::string broadcastAddr = calculateBroadcastAddress(iface);
+            std::cout << "Sending HELLO to broadcast address: " << broadcastAddr << std::endl;
+            pm.sendHello(broadcastAddr, port, hostname, interfaces);
+        }
         
         auto activeNeighbors = lsm.getActiveNeighbors();
         for (const auto& neighbor : activeNeighbors) {
@@ -72,3 +85,4 @@ int main(int argc, char* argv[])
     
     return 0;
 }
+
