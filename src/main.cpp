@@ -14,6 +14,6 @@ int main()
         pm.sendHello("10.1.0.2", 5000, "R_1", interfaces);
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
-
+    pm.receivePackets();
     return 0;
 }
