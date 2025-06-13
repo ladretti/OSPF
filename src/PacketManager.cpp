@@ -66,6 +66,7 @@ void PacketManager::receivePackets(int port) {
 
     char buffer[2048];
     while (true) {
+        
         sockaddr_in sender{};
         socklen_t senderLen = sizeof(sender);
 
@@ -77,6 +78,19 @@ void PacketManager::receivePackets(int port) {
             try {
                 json j = json::parse(buffer);
                 std::cout << "Received JSON:\n" << j.dump(4) << "\n";
+
+                if (j.contains("type") && j["type"] == "HELLO") {
+                    char senderIp[INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
+
+                    // Envoyer un HELLO de retour
+                    std::string hostname = "R_2";  // <- adapte si tu es sur une autre VM
+                    std::vector<std::string> myInterfaces = {"192.168.2.1", "10.1.0.2"};
+
+                    PacketManager replyManager;
+                    replyManager.sendHello(senderIp, 5000, hostname, myInterfaces);
+                }
+
             } catch (...) {
                 std::cout << "Received invalid JSON: " << buffer << "\n";
             }
