@@ -2,18 +2,73 @@
 #include "LinkStateManager.hpp"
 #include "RoutingProtocol.hpp"
 #include "PacketManager.hpp"
+#include "utils.hpp"
 #include <iostream>
-#include <bits/this_thread_sleep.h>
+#include <thread>
+#include <atomic>
+#include <vector>
 
-int main()
+int main(int argc, char* argv[])
 {
+    std::string routerId = "R_1";
+    if (argc > 1) {
+        routerId = argv[1];
+    }
+    
+    std::cout << "Starting router: " << routerId << std::endl;
+    
+    const std::string configFile = "config/router.conf";
+    RouterConfig config = getRouterConfig(routerId, configFile);
+    
+    if (config.hostname.empty() || config.interfaces.empty()) {
+        std::cerr << "Invalid configuration for router: " << routerId << std::endl;
+        return 1;
+    }
+    
+    const std::string hostname = config.hostname;
+    std::vector<std::string> interfaces = config.interfaces;
+    int port = config.port;
+    
+    std::cout << "Hostname: " << hostname << std::endl;
+    std::cout << "Interfaces:" << std::endl;
+    for (const auto& iface : interfaces) {
+        std::cout << "  " << iface << std::endl;
+    }
+    std::cout << "Port: " << port << std::endl;
+    
+    LinkStateManager lsm;
     PacketManager pm;
+    
+    std::atomic<bool> running = true;
+    std::thread receiverThread([&pm, &lsm, &running, port]() {
+        std::cout << "Starting receiver thread on port " << port << std::endl;
+        pm.receivePackets(port, lsm, running);
+    });
+    
     while (true)
     {
-        std::vector<std::string> interfaces = {"192.168.1.1", "10.1.0.1"};
-        pm.sendHello("10.1.0.2", 5000, "R_1", interfaces);
+        pm.sendHello("255.255.255.255", port, hostname, interfaces);
+        
+        auto activeNeighbors = lsm.getActiveNeighbors();
+        for (const auto& neighbor : activeNeighbors) {
+            pm.sendHello(neighbor, port, hostname, interfaces);
+        }
+        
+        lsm.purgeInactiveNeighbors();
+        
+        std::cout << "Active neighbors: ";
+        for (const auto& neighbor : lsm.getActiveNeighbors()) {
+            std::cout << neighbor << " ";
+        }
+        std::cout << std::endl;
+        
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
-    pm.receivePackets();
+    
+    running = false;
+    if (receiverThread.joinable()) {
+        receiverThread.join();
+    }
+    
     return 0;
 }
