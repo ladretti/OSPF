@@ -7,6 +7,6 @@
 int main()
 {
     PacketManager pm;
-    pm.sendHello("10.1.0.2"); // envoie à R_2
+    pm.sendHello("10.1.0.2");
     return 0;
 }
