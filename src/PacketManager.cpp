@@ -59,7 +59,7 @@ void PacketManager::sendHello(const std::string &destIp, int port,
     close(sock);
 }
 
-void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running)
+void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running, const std::string &hostname)
 {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0)
@@ -104,6 +104,10 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                 json j = json::parse(buffer);
                 std::cout << "Received JSON:\n"
                           << j.dump(4) << "\n";
+                if (j.contains("hostname") && j["hostname"] == hostname)
+                {
+                    continue;
+                }
 
                 if (j.contains("type") && j["type"] == "HELLO")
                 {

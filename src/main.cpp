@@ -47,9 +47,9 @@ int main(int argc, char* argv[])
     PacketManager pm;
     
     std::atomic<bool> running = true;
-    std::thread receiverThread([&pm, &lsm, &running, port]() {
+    std::thread receiverThread([&pm, &lsm, &running, port, hostname]() {
         std::cout << "Starting receiver thread on port " << port << std::endl;
-        pm.receivePackets(port, lsm, running);
+        pm.receivePackets(port, lsm, running, hostname);
     });
 
     

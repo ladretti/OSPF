@@ -4,7 +4,6 @@
 #include <atomic>
 #include "LinkStateManager.hpp"
 
-
 class PacketManager
 {
 public:
@@ -12,5 +11,6 @@ public:
                    const std::string &hostname = "",
                    const std::vector<std::string> &interfaces = {});
 
-    void receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running);
+    void receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running,
+                        const std::string &hostname = "");
 };
