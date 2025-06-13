@@ -1,6 +1,9 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <atomic>
+#include "LinkStateManager.hpp"
+
 
 class PacketManager
 {
@@ -9,6 +12,5 @@ public:
                    const std::string &hostname = "",
                    const std::vector<std::string> &interfaces = {});
 
-                   
     void receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running);
 };
