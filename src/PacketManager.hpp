@@ -1,9 +1,8 @@
-// PacketManager.h
 #pragma once
 #include <string>
 
 class PacketManager {
 public:
-    void sendHello(const std::string& ip);
-    void receivePackets();
+    void sendHello(const std::string& destIp, int port = 5000);
+    void receivePackets(int port = 5000);
 };
