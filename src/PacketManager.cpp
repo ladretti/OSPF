@@ -1,19 +1,32 @@
 #include "PacketManager.hpp"
+#include "../include/json.hpp"
 #include <iostream>
 #include <string>
+#include <vector>
 #include <cstring>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-void PacketManager::sendHello(const std::string& destIp, int port) {
+using json = nlohmann::json;
+
+void PacketManager::sendHello(const std::string& destIp, int port,
+                              const std::string& hostname,
+                              const std::vector<std::string>& interfaces) {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0) {
         perror("socket");
         return;
     }
 
-    std::string message = "HELLO from router";
+    // Créer le message JSON
+    json j;
+    j["type"] = "HELLO";
+    j["ip"] = destIp; // ou l'IP locale à déterminer dynamiquement
+    j["hostname"] = hostname;
+    j["interfaces"] = interfaces;
+
+    std::string message = j.dump();
 
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
@@ -51,8 +64,9 @@ void PacketManager::receivePackets(int port) {
 
     std::cout << "Listening for packets on UDP port " << port << "...\n";
 
-    char buffer[1024];
+    char buffer[2048];
     while (true) {
+        
         sockaddr_in sender{};
         socklen_t senderLen = sizeof(sender);
 
@@ -60,9 +74,26 @@ void PacketManager::receivePackets(int port) {
                                (sockaddr*)&sender, &senderLen);
         if (len > 0) {
             buffer[len] = '\0';
-            char senderIp[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
-            std::cout << "Received from " << senderIp << ": " << buffer << "\n";
+
+            try {
+                json j = json::parse(buffer);
+                std::cout << "Received JSON:\n" << j.dump(4) << "\n";
+
+                if (j.contains("type") && j["type"] == "HELLO") {
+                    char senderIp[INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
+
+                    // Envoyer un HELLO de retour
+                    std::string hostname = "R_2";  // <- adapte si tu es sur une autre VM
+                    std::vector<std::string> myInterfaces = {"192.168.2.1", "10.1.0.2"};
+
+                    PacketManager replyManager;
+                    replyManager.sendHello(senderIp, 5000, hostname, myInterfaces);
+                }
+
+            } catch (...) {
+                std::cout << "Received invalid JSON: " << buffer << "\n";
+            }
         }
     }
 
