@@ -102,22 +102,20 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
             try
             {
                 json j = json::parse(buffer);
-                std::cout << "Received JSON:\n"
-                          << j.dump(4) << "\n";
                 if (j.contains("hostname") && j["hostname"] == hostname)
                 {
                     continue;
                 }
+                std::cout << "Received JSON:\n"
+                          << j.dump(4) << "\n";
 
                 if (j.contains("type") && j["type"] == "HELLO")
                 {
                     char senderIp[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
 
-                    // Update our LinkStateManager with the new neighbor
                     lsm.updateNeighbor(senderIp);
 
-                    // We could also extract additional info from the HELLO message
                     if (j.contains("hostname"))
                     {
                         std::cout << "Discovered neighbor: " << j["hostname"] << " at " << senderIp << std::endl;
@@ -131,7 +129,6 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
         }
         else if (len == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
         {
-            // No data available, sleep a bit to avoid busy waiting
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
