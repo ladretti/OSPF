@@ -4,11 +4,13 @@
 #include <unordered_map>
 #include "../include/json.hpp"
 #include <iostream>
+#include "RoutingTable.hpp"
+#include <set>
+#include <queue>
 
 class TopologyDatabase
 {
 public:
-    // Map hostname -> dernier LSA reçu (sous forme de JSON)
     std::unordered_map<std::string, nlohmann::json> lsaMap;
 
     void updateLSA(const nlohmann::json &lsa)
@@ -22,6 +24,65 @@ public:
                 lsaMap[host] = lsa;
             }
         }
+    }
+
+    RoutingTable computeRoutingTable(const std::string &selfHostname) const
+    {
+        // Graphe: hostname -> voisins (vector<string>)
+        std::unordered_map<std::string, std::vector<std::string>> graph;
+        for (const auto &[hostname, lsa] : lsaMap)
+        {
+            if (lsa.contains("interfaces"))
+            {
+                for (const auto &neighborIface : lsa["interfaces"])
+                {
+                    graph[hostname].push_back(neighborIface);
+                }
+            }
+        }
+
+        // Dijkstra
+        std::unordered_map<std::string, int> dist;
+        std::unordered_map<std::string, std::string> prev;
+        std::set<std::string> visited;
+        std::queue<std::string> q;
+
+        dist[selfHostname] = 0;
+        q.push(selfHostname);
+
+        while (!q.empty())
+        {
+            std::string u = q.front();
+            q.pop();
+            visited.insert(u);
+
+            for (const auto &v : graph[u])
+            {
+                if (!visited.count(v))
+                {
+                    if (!dist.count(v) || dist[v] > dist[u] + 1)
+                    {
+                        dist[v] = dist[u] + 1;
+                        prev[v] = u;
+                        q.push(v);
+                    }
+                }
+            }
+        }
+        RoutingTable rt;
+        for (const auto &[dest, _] : dist)
+        {
+            if (dest == selfHostname)
+                continue;
+            // remonte le chemin pour trouver le next hop
+            std::string hop = dest;
+            while (prev[hop] != selfHostname)
+            {
+                hop = prev[hop];
+            }
+            rt.table[dest] = hop;
+        }
+        return rt;
     }
 
     void print() const
