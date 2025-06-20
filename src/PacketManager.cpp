@@ -114,11 +114,12 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     char senderIp[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
 
-                    if (lsm.updateNeighbor(senderIp))
+                    std::string neighborHostname = j.value("hostname", "");
+                    if (lsm.updateNeighbor(senderIp, neighborHostname))
                     {
-                        if (j.contains("hostname"))
+                        if (!neighborHostname.empty())
                         {
-                            std::cout << "Discovered neighbor: " << j["hostname"] << " at " << senderIp << std::endl;
+                            std::cout << "Discovered neighbor: " << neighborHostname << " at " << senderIp << std::endl;
                         }
                     }
                 }
