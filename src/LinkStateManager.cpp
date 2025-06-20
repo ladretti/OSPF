@@ -4,8 +4,11 @@
 
 bool LinkStateManager::updateNeighbor(const std::string& neighborIp)
 {
-    auto [it, inserted] = neighbors.insert_or_assign(neighborIp, std::chrono::steady_clock::now());
-    return inserted;
+    auto now = std::chrono::steady_clock::now();
+    auto it = neighbors.find(neighborIp);
+    bool isNew = (it == neighbors.end());
+    neighbors[neighborIp] = NeighborInfo{neighborIp, now};
+    return isNew;
 }
 
 std::vector<std::string> LinkStateManager::getActiveNeighbors() const {
