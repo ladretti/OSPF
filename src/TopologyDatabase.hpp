@@ -103,11 +103,10 @@ public:
 
     void print() const
     {
-        for (const auto &[hostname, lsa] : lsaMap)
+        std::cout << "Routing Table:" << std::endl;
+        for (const auto &[dest, nextHop] : table)
         {
-            std::cout << "LSA from " << hostname
-                      << " (seq " << lsa["sequence_number"] << "): "
-                      << lsa.dump(2) << std::endl;
+            std::cout << "  " << dest << " via " << nextHop << std::endl;
         }
     }
 };
