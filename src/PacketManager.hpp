@@ -16,5 +16,6 @@ public:
     
     void sendLSA(const std::string &destIp, int port,
                  const std::string &hostname,
-                 const std::vector<std::string> &interfaces);
+                 const std::vector<std::string> &interfaces,
+                 const std::vector<std::string> &neighbors);
 };

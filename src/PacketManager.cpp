@@ -147,7 +147,8 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
 
 void PacketManager::sendLSA(const std::string &destIp, int port,
                             const std::string &hostname,
-                            const std::vector<std::string> &interfaces)
+                            const std::vector<std::string> &interfaces,
+                            const std::vector<std::string> &neighbors)
 {
 
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -175,6 +176,7 @@ void PacketManager::sendLSA(const std::string &destIp, int port,
         {"type", "LSA"},
         {"hostname", hostname},
         {"interfaces", interfaces},
+        {"neighbors", neighbors},
         {"sequence_number", seq}};
 
     if (sendto(sock, lsaMsg.dump().c_str(), lsaMsg.dump().length(), 0,
