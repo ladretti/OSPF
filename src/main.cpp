@@ -9,6 +9,9 @@
 #include <vector>
 #include "TopologyDatabase.hpp"
 
+using json = nlohmann::json;
+
+
 std::string calculateBroadcastAddress(const std::string &ip)
 {
     size_t lastDot = ip.find_last_of('.');
@@ -80,6 +83,15 @@ int main(int argc, char *argv[])
             pm.sendHello(neighbor, port, hostname, interfaces);
             pm.sendLSA(neighbor, port, hostname, interfaces, activeNeighborHostnames);
         }
+
+        static int mySeq = 0;
+        json lsa = {
+            {"hostname", hostname},
+            {"sequence_number", mySeq++},
+            {"interfaces", interfaces},
+            {"neighbors", activeNeighborHostnames}};
+
+        topoDb.updateLSA(lsa);
 
         lsm.purgeInactiveNeighbors();
 
