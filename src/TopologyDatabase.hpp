@@ -32,16 +32,16 @@ public:
         std::unordered_map<std::string, std::vector<std::string>> graph;
         for (const auto &[hostname, lsa] : lsaMap)
         {
-            if (lsa.contains("interfaces"))
+            if (lsa.contains("neighbors"))
             {
-                for (const auto &neighborIface : lsa["interfaces"])
+                for (const auto &neighbor : lsa["neighbors"])
                 {
-                    graph[hostname].push_back(neighborIface);
+                    graph[hostname].push_back(neighbor);
                 }
             }
         }
 
-        // Dijkstra
+        // Dijkstra (BFS simplifié, coût 1 par lien)
         std::unordered_map<std::string, int> dist;
         std::unordered_map<std::string, std::string> prev;
         std::set<std::string> visited;
@@ -69,6 +69,7 @@ public:
                 }
             }
         }
+
         RoutingTable rt;
         for (const auto &[dest, _] : dist)
         {

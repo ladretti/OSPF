@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
         for (const auto &neighbor : activeNeighbors)
         {
             pm.sendHello(neighbor, port, hostname, interfaces);
-            pm.sendLSA(neighbor, port, hostname, interfaces);
+            pm.sendLSA(neighbor, port, hostname, interfaces,  activeNeighbors);
         }
 
         lsm.purgeInactiveNeighbors();
