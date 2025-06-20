@@ -11,7 +11,6 @@
 
 using json = nlohmann::json;
 
-
 std::string calculateBroadcastAddress(const std::string &ip)
 {
     size_t lastDot = ip.find_last_of('.');
@@ -77,6 +76,9 @@ int main(int argc, char *argv[])
 
         auto activeNeighbors = lsm.getActiveNeighbors();
         auto activeNeighborHostnames = lsm.getActiveNeighborHostnames();
+
+        std::set<std::string> uniqueNeighbors(activeNeighborHostnames.begin(), activeNeighborHostnames.end());
+        std::vector<std::string> neighbors(uniqueNeighbors.begin(), uniqueNeighbors.end());
 
         for (const auto &neighbor : activeNeighbors)
         {
