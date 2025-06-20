@@ -73,10 +73,12 @@ int main(int argc, char *argv[])
         }
 
         auto activeNeighbors = lsm.getActiveNeighbors();
+        auto activeNeighborHostnames = lsm.getActiveNeighborHostnames();
+
         for (const auto &neighbor : activeNeighbors)
         {
             pm.sendHello(neighbor, port, hostname, interfaces);
-            pm.sendLSA(neighbor, port, hostname, interfaces,  activeNeighbors);
+            pm.sendLSA(neighbor, port, hostname, interfaces, activeNeighborHostnames);
         }
 
         lsm.purgeInactiveNeighbors();
