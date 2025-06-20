@@ -139,7 +139,7 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                         {
                             if (neighborIp != senderIp)
                             {
-                                sendLSA(neighborIp, port, j["hostname"], j["interfaces"], j["neighbors"]);
+                                sendLSA(neighborIp, port, j);
                             }
                         }
                     }
@@ -159,12 +159,8 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
     close(sock);
 }
 
-void PacketManager::sendLSA(const std::string &destIp, int port,
-                            const std::string &hostname,
-                            const std::vector<std::string> &interfaces,
-                            const std::vector<std::string> &neighbors)
+void PacketManager::sendLSA(const std::string &destIp, int port, const json &lsaMsg)
 {
-
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0)
     {
@@ -183,21 +179,10 @@ void PacketManager::sendLSA(const std::string &destIp, int port,
         return;
     }
 
-    static std::unordered_map<std::string, int> seqNumbers;
-    int seq = ++seqNumbers[hostname];
-
-    json lsaMsg = {
-        {"type", "LSA"},
-        {"hostname", hostname},
-        {"interfaces", interfaces},
-        {"neighbors", neighbors},
-        {"sequence_number", seq}};
-
     if (sendto(sock, lsaMsg.dump().c_str(), lsaMsg.dump().length(), 0,
                (sockaddr *)&addr, sizeof(addr)) < 0)
     {
         perror("sendto");
     }
-
     close(sock);
 }
