@@ -7,6 +7,8 @@
 #include <thread>
 #include <atomic>
 #include <vector>
+#include "TopologyDatabase.hpp"
+
 
 std::string calculateBroadcastAddress(const std::string& ip) {
     size_t lastDot = ip.find_last_of('.');
@@ -18,6 +20,9 @@ std::string calculateBroadcastAddress(const std::string& ip) {
 int main(int argc, char* argv[])
 {
     std::string routerId = "R_1";
+
+    TopologyDatabase topoDb;
+
     if (argc > 1) {
         routerId = argv[1];
     }
@@ -47,15 +52,18 @@ int main(int argc, char* argv[])
     PacketManager pm;
     
     std::atomic<bool> running = true;
-    std::thread receiverThread([&pm, &lsm, &running, port, hostname]() {
+    std::thread receiverThread([&pm, &lsm, &running, port, hostname, &topoDb]() {
         std::cout << "Starting receiver thread on port " << port << std::endl;
-        pm.receivePackets(port, lsm, running, hostname);
+        pm.receivePackets(port, lsm, running, hostname, topoDb);
     });
+
 
     
     
     while (true)
     {
+        topoDb.print();
+        
         for (const auto& iface : interfaces) {
             std::string broadcastAddr = calculateBroadcastAddress(iface);
             std::cout << "Sending HELLO to broadcast address: " << broadcastAddr << std::endl;
@@ -65,6 +73,7 @@ int main(int argc, char* argv[])
         auto activeNeighbors = lsm.getActiveNeighbors();
         for (const auto& neighbor : activeNeighbors) {
             pm.sendHello(neighbor, port, hostname, interfaces);
+            pm.sendLSA(neighbor, port, hostname, interfaces);
         }
         
         lsm.purgeInactiveNeighbors();

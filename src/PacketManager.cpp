@@ -59,7 +59,7 @@ void PacketManager::sendHello(const std::string &destIp, int port,
     close(sock);
 }
 
-void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running, const std::string &hostname)
+void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running, const std::string &hostname, TopologyDatabase& topoDb)
 {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0)
@@ -104,7 +104,7 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                 json j = json::parse(buffer);
                 if (j.contains("hostname") && j["hostname"] == hostname)
                 {
-                    continue; // Ignore et ne log pas les paquets venant de soi-même
+                    continue;
                 }
                 std::cout << "Received JSON:\n"
                           << j.dump(4) << "\n";
@@ -121,6 +121,14 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                         std::cout << "Discovered neighbor: " << j["hostname"] << " at " << senderIp << std::endl;
                     }
                 }
+                if (j.contains("type") && j["type"] == "LSA")
+                {
+                    char senderIp[INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
+
+                    std::cout << "Received LSA from " << j["hostname"] << " at " << senderIp << std::endl;
+                    topoDb.updateLSA(j);
+                }
             }
             catch (...)
             {
@@ -131,6 +139,42 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
+    }
+
+    close(sock);
+}
+
+void PacketManager::sendLSA(const std::string &destIp, int port,
+                            const std::string &hostname,
+                            const std::vector<std::string> &interfaces)
+{
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0)
+    {
+        perror("socket");
+        return;
+    }
+
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+
+    if (inet_pton(AF_INET, destIp.c_str(), &addr.sin_addr) <= 0)
+    {
+        std::cerr << "Invalid address: " << destIp << std::endl;
+        close(sock);
+        return;
+    }
+
+    json lsaMsg = {
+        {"type", "LSA"},
+        {"hostname", hostname},
+        {"interfaces", interfaces}};
+
+    if (sendto(sock, lsaMsg.dump().c_str(), lsaMsg.dump().length(), 0,
+               (sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        perror("sendto");
     }
 
     close(sock);
