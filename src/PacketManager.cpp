@@ -129,7 +129,20 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
 
                     std::cout << "Received LSA from " << j["hostname"] << " at " << senderIp << std::endl;
-                    topoDb.updateLSA(j);
+
+                    bool updated = topoDb.updateLSA(j);
+
+                    if (updated)
+                    {
+                        auto neighbors = lsm.getActiveNeighbors();
+                        for (const auto &neighborIp : neighbors)
+                        {
+                            if (neighborIp != senderIp)
+                            {
+                                sendLSA(neighborIp, port, j["hostname"], j["interfaces"], j["neighbors"]);
+                            }
+                        }
+                    }
                 }
             }
             catch (...)

@@ -13,7 +13,7 @@ class TopologyDatabase
 public:
     std::unordered_map<std::string, nlohmann::json> lsaMap;
 
-    void updateLSA(const nlohmann::json &lsa)
+    bool updateLSA(const nlohmann::json &lsa)
     {
         if (lsa.contains("hostname") && lsa.contains("sequence_number"))
         {
@@ -22,8 +22,10 @@ public:
             if (!lsaMap.count(host) || lsaMap[host]["sequence_number"] < seq)
             {
                 lsaMap[host] = lsa;
+                return true;
             }
         }
+        return false;
     }
 
     RoutingTable computeRoutingTable(const std::string &selfHostname) const
