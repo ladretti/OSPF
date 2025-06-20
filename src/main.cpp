@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
         for (const auto &neighbor : activeNeighbors)
         {
             pm.sendHello(neighbor, port, hostname, interfaces);
-            pm.sendLSA(neighbor, port, hostname, interfaces, activeNeighborHostnames);
+            pm.sendLSA(neighbor, port,  topoDb.lsaMap[hostname]);
         }
 
         static int mySeq = 0;
