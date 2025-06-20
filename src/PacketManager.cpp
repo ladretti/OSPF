@@ -104,7 +104,7 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                 json j = json::parse(buffer);
                 if (j.contains("hostname") && j["hostname"] == hostname)
                 {
-                    continue;
+                    continue; // Ignore et ne log pas les paquets venant de soi-même
                 }
                 std::cout << "Received JSON:\n"
                           << j.dump(4) << "\n";
