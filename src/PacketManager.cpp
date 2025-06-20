@@ -148,6 +148,16 @@ void PacketManager::sendLSA(const std::string &destIp, int port,
                             const std::string &hostname,
                             const std::vector<std::string> &interfaces)
 {
+    static std::unordered_map<std::string, int> seqNumbers;
+    int seq = ++seqNumbers[hostname];
+
+    json lsaMsg = {
+        {"type", "LSA"},
+        {"hostname", hostname},
+        {"interfaces", interfaces},
+        {"sequence_number", seq}
+    };
+    
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0)
     {
