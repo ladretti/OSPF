@@ -83,6 +83,21 @@ public:
             }
             rt.table[dest] = hop;
         }
+        for (const auto &[hostname, lsa] : lsaMap)
+        {
+            if (lsa.contains("networks"))
+            {
+                for (const auto &net : lsa["networks"])
+                {
+                    if (hostname == selfHostname)
+                        continue;
+                    if (rt.table.count(hostname))
+                    {
+                        rt.table[net] = rt.table[hostname];
+                    }
+                }
+            }
+        }
         return rt;
     }
 

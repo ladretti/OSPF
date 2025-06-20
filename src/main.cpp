@@ -87,11 +87,22 @@ int main(int argc, char *argv[])
         }
 
         static int mySeq = 0;
+        std::vector<std::string> networks;
+        for (const auto &iface : interfaces)
+        {
+            size_t lastDot = iface.find_last_of('.');
+            if (lastDot != std::string::npos)
+            {
+                networks.push_back(iface.substr(0, lastDot + 1) + "0/24");
+            }
+        }
+
         json lsa = {
             {"hostname", hostname},
             {"sequence_number", mySeq++},
             {"interfaces", interfaces},
-            {"neighbors", activeNeighborHostnames}};
+            {"neighbors", neighbors},
+            {"networks", networks}};
 
         topoDb.updateLSA(lsa);
 
