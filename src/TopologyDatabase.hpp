@@ -105,11 +105,16 @@ public:
     {
         for (const auto &[hostname, lsa] : lsaMap)
         {
-            std::cout << "LSA from " << hostname
-                      << " (seq " << lsa["sequence_number"] << "): "
-                      << lsa.dump(2) << std::endl;
+            std::cout << "LSA from " << hostname << " (seq " << lsa["sequence_number"] << "): ";
+            if (lsa.contains("interfaces"))
+            {
+                std::cout << "Interfaces: ";
+                for (const auto &iface : lsa["interfaces"])
+                {
+                    std::cout << iface << " ";
+                }
+            }
+            std::cout << std::endl;
         }
-
-         
     }
 };
