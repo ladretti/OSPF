@@ -2,8 +2,10 @@
 #include "LinkStateManager.hpp"
 #include <chrono>
 
-void LinkStateManager::updateNeighbor(const std::string& ip) {
-    neighbors[ip] = {ip, std::chrono::steady_clock::now()};
+bool LinkStateManager::updateNeighbor(const std::string& neighborIp)
+{
+    auto [it, inserted] = neighbors.insert_or_assign(neighborIp, std::chrono::steady_clock::now());
+    return inserted;
 }
 
 std::vector<std::string> LinkStateManager::getActiveNeighbors() const {

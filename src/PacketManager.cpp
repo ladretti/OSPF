@@ -59,7 +59,7 @@ void PacketManager::sendHello(const std::string &destIp, int port,
     close(sock);
 }
 
-void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running, const std::string &hostname, TopologyDatabase& topoDb)
+void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running, const std::string &hostname, TopologyDatabase &topoDb)
 {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock < 0)
@@ -114,11 +114,12 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     char senderIp[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
 
-                    lsm.updateNeighbor(senderIp);
-
-                    if (j.contains("hostname"))
+                    if (lsm.updateNeighbor(senderIp))
                     {
-                        std::cout << "Discovered neighbor: " << j["hostname"] << " at " << senderIp << std::endl;
+                        if (j.contains("hostname"))
+                        {
+                            std::cout << "Discovered neighbor: " << j["hostname"] << " at " << senderIp << std::endl;
+                        }
                     }
                 }
                 if (j.contains("type") && j["type"] == "LSA")
@@ -174,8 +175,7 @@ void PacketManager::sendLSA(const std::string &destIp, int port,
         {"type", "LSA"},
         {"hostname", hostname},
         {"interfaces", interfaces},
-        {"sequence_number", seq}
-    };
+        {"sequence_number", seq}};
 
     if (sendto(sock, lsaMsg.dump().c_str(), lsaMsg.dump().length(), 0,
                (sockaddr *)&addr, sizeof(addr)) < 0)

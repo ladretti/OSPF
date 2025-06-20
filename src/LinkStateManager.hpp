@@ -5,14 +5,16 @@
 #include <chrono>
 #include <vector>
 
-struct NeighborInfo {
+struct NeighborInfo
+{
     std::string ip;
     std::chrono::steady_clock::time_point lastSeen;
 };
 
-class LinkStateManager {
+class LinkStateManager
+{
 public:
-    void updateNeighbor(const std::string& ip);
+    bool updateNeighbor(const std::string &neighborIp);
     std::vector<std::string> getActiveNeighbors() const;
     void purgeInactiveNeighbors();
 
