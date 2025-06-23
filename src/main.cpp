@@ -105,13 +105,8 @@ int main(int argc, char *argv[])
             {"networks", networks}};
 
         std::string lsaStr = lsa.dump();
-        const char *sharedSecret = std::getenv("SHARED_SECRET");
-        if (!sharedSecret)
-        {
-            std::cerr << "Environment variable SHARED_SECRET is not set!" << std::endl;
-            return 1;
-        }
-        lsa["hmac"] = computeHMAC(lsaStr, sharedSecret);
+
+        lsa["hmac"] = computeHMAC(lsaStr, "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
 
         topoDb.updateLSA(lsa);
 
