@@ -106,8 +106,9 @@ int main(int argc, char *argv[])
 
         std::string lsaStr = lsa.dump();
 
-        lsa["hmac"] = computeHMAC(lsaStr, "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
-
+        std::string hmac = computeHMAC(lsaStr, "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
+        lsa["hmac"] = toHex(hmac);
+        
         topoDb.updateLSA(lsa);
 
         lsm.purgeInactiveNeighbors();
