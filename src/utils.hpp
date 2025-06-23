@@ -25,10 +25,10 @@ std::vector<std::string> split(const std::string& str, char delimiter);
 
 
 inline std::string computeHMAC(const std::string &data, const std::string &key) {
-    unsigned char* result;
-    unsigned int len = 32;
-    result = HMAC(EVP_sha256(), key.data(), key.size(),
-                  reinterpret_cast<const unsigned char*>(data.data()), data.size(), NULL, NULL);
+    unsigned char result[EVP_MAX_MD_SIZE];
+    unsigned int len = 0;
+    HMAC(EVP_sha256(), key.data(), key.size(),
+         reinterpret_cast<const unsigned char*>(data.data()), data.size(), result, &len);
     return std::string(reinterpret_cast<char*>(result), len);
 }
 

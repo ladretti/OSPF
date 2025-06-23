@@ -112,7 +112,7 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     std::string receivedHmac = j["hmac"];
                     j.erase("hmac");
                     std::string computedHmac = computeHMAC(j.dump(), "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
-                    if (receivedHmac != computedHmac)
+                    if (receivedHmac != toHex(computedHmac))
                     {
                         std::cerr << "HMAC verification failed! Packet dropped." << std::endl;
                         continue;
