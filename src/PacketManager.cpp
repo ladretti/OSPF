@@ -102,7 +102,12 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
         if (len > 0)
         {
             buffer[len] = '\0';
-
+            std::string received(buffer, len);
+            if (!nlohmann::json::accept(received))
+            {
+                std::cerr << "Received invalid JSON (not UTF-8 or not JSON): " << received << std::endl;
+                continue;
+            }
             try
             {
                 json j = json::parse(buffer);
