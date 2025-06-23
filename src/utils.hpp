@@ -29,3 +29,11 @@ inline std::string computeHMAC(const std::string &data, const std::string &key) 
                   reinterpret_cast<const unsigned char*>(data.data()), data.size(), NULL, NULL);
     return std::string(reinterpret_cast<char*>(result), len);
 }
+
+inline std::string toHex(const std::string &input) {
+    std::ostringstream oss;
+    for (unsigned char c : input) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << (int)c;
+    }
+    return oss.str();
+}
