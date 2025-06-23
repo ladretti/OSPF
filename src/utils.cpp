@@ -22,8 +22,6 @@ std::map<std::string, RouterConfig> parseRouterConfig(const std::string &configF
     std::string line;
     std::string currentSection;
 
-    std::string line;
-    std::string currentSection;
     RouterConfig currentConfig;
 
     while (std::getline(file, line))
@@ -31,7 +29,6 @@ std::map<std::string, RouterConfig> parseRouterConfig(const std::string &configF
         line.erase(0, line.find_first_not_of(" \t\r\n"));
         line.erase(line.find_last_not_of(" \t\r\n") + 1);
 
-        // Skip empty lines and comments
         if (line.empty() || line[0] == '#' || (line.size() > 1 && line[0] == '/' && line[1] == '/'))
             continue;
 
@@ -41,12 +38,10 @@ std::map<std::string, RouterConfig> parseRouterConfig(const std::string &configF
             configs[currentSection] = RouterConfig();
             continue;
         }
-        // Skip empty lines and comments
         if (line.empty() || line.substr(0, 2) == "//")
         {
             continue;
         }
-
         // Check for section header [RouterID]
         if (line[0] == '[' && line.back() == ']')
         {
