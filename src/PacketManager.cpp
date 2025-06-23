@@ -50,9 +50,7 @@ void PacketManager::sendHello(const std::string &destIp, int port,
         {"type", "HELLO"},
         {"hostname", hostname},
         {"interfaces", interfaces}};
-
-    std::string helloMsgStr = helloMsg.dump();
-    helloMsg["hmac"] = computeHMAC(helloMsgStr, "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
+        
     if (sendto(sock, helloMsg.dump().c_str(), helloMsg.dump().length(), 0,
                (sockaddr *)&addr, sizeof(addr)) < 0)
     {
@@ -102,12 +100,7 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
         if (len > 0)
         {
             buffer[len] = '\0';
-            std::string received(buffer, len);
-            if (!nlohmann::json::accept(received))
-            {
-                std::cerr << "Received invalid JSON (not UTF-8 or not JSON): " << received << std::endl;
-                continue;
-            }
+
             try
             {
                 json j = json::parse(buffer);
