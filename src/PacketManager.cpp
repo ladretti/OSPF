@@ -108,7 +108,13 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                 {
                     std::string receivedHmac = j["hmac"];
                     j.erase("hmac");
-                    std::string computedHmac = computeHMAC(j.dump(), std::getenv("SHARED_SECRET"));
+                    const char *sharedSecret = std::getenv("SHARED_SECRET");
+                    if (!sharedSecret)
+                    {
+                        std::cerr << "Environment variable SHARED_SECRET is not set!" << std::endl;
+                        return 1;
+                    }
+                    std::string computedHmac = computeHMAC(j.dump(), sharedSecret);
                     if (receivedHmac != computedHmac)
                     {
                         std::cerr << "HMAC verification failed! Packet dropped." << std::endl;
