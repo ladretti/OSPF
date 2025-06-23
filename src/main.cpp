@@ -57,7 +57,6 @@ int main(int argc, char *argv[])
         }
         return interfacesName.empty() ? "eth0" : interfacesName[0];
     };
-
     int port = config.port;
 
     std::cout << "Hostname: " << hostname << std::endl;
@@ -139,24 +138,8 @@ int main(int argc, char *argv[])
         routingTable.print();
         for (const auto &[network, nextHop] : routingTable.table)
         {
-            std::cout << "Ajout route : " << network;
-            // On ne veut que les vraies adresses réseau (préfixes), pas les hostnames
-            if (network.find('/') == std::string::npos)
-                continue; // saute les hostnames
-
             std::string iface = getInterfaceName(nextHop);
-            std::cout << "Ajout route : " << network << " via " << nextHop << " dev " << iface << std::endl;
             addRoute(network, nextHop, iface);
-        }
-        for (const auto &[hostname, lsa] : topoDb.lsaMap)
-        {
-            if (lsa.contains("networks"))
-            {
-                for (const auto &net : lsa["networks"])
-                {
-                    std::cout << "Réseau annoncé par " << hostname << " : " << net << std::endl;
-                }
-            }
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(5));

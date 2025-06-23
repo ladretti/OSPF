@@ -72,42 +72,32 @@ public:
             }
         }
 
-        std::unordered_map<std::string, std::string> nextHopHostname;
+        RoutingTable rt;
         for (const auto &[dest, _] : dist)
         {
             if (dest == selfHostname)
                 continue;
+            // remonte le chemin pour trouver le next hop
             std::string hop = dest;
             while (prev[hop] != selfHostname)
             {
                 hop = prev[hop];
             }
-            nextHopHostname[dest] = hop;
+            rt.table[dest] = hop;
         }
-
-        RoutingTable rt;
         for (const auto &[hostname, lsa] : lsaMap)
         {
-            if (hostname == selfHostname)
-                continue;
-            if (!lsa.contains("networks"))
-                continue;
-            for (const auto &net : lsa["networks"])
+            if (lsa.contains("networks"))
             {
-                // Trouver le next-hop hostname pour atteindre ce routeur
-                if (!nextHopHostname.count(hostname))
-                    continue;
-                std::string nextHopHost = nextHopHostname[hostname];
-
-                // Trouver l'IP du next-hop (première interface du next-hop)
-                std::string nextHopIp;
-                if (lsaMap.count(nextHopHost) && lsaMap.at(nextHopHost).contains("interfaces"))
+                for (const auto &net : lsa["networks"])
                 {
-                    nextHopIp = lsaMap.at(nextHopHost)["interfaces"][0];
+                    if (hostname == selfHostname)
+                        continue;
+                    if (rt.table.count(hostname))
+                    {
+                        rt.table[net] = rt.table[hostname];
+                    }
                 }
-
-                if (!nextHopIp.empty())
-                    rt.table[net] = nextHopIp;
             }
         }
         return rt;
