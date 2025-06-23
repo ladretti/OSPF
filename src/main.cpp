@@ -148,6 +148,16 @@ int main(int argc, char *argv[])
             std::cout << "Ajout route : " << network << " via " << nextHop << " dev " << iface << std::endl;
             addRoute(network, nextHop, iface);
         }
+        for (const auto &[hostname, lsa] : topoDb.lsaMap)
+        {
+            if (lsa.contains("networks"))
+            {
+                for (const auto &net : lsa["networks"])
+                {
+                    std::cout << "Réseau annoncé par " << hostname << " : " << net << std::endl;
+                }
+            }
+        }
 
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
