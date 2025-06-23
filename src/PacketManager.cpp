@@ -202,7 +202,13 @@ void PacketManager::sendLSA(const std::string &destIp, int port, const json &lsa
         return;
     }
 
-    if (sendto(sock, lsaMsg.dump().c_str(), lsaMsg.dump().length(), 0,
+    json lsaToSend = lsaMsg;
+    lsaToSend.erase("hmac");
+    std::string lsaStr = lsaToSend.dump();
+    std::string hmac = computeHMAC(lsaStr, "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
+    lsaToSend["hmac"] = toHex(hmac);
+
+    if (sendto(sock, lsaToSend.dump().c_str(), lsaToSend.dump().length(), 0,
                (sockaddr *)&addr, sizeof(addr)) < 0)
     {
         perror("sendto");
