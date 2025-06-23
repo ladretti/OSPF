@@ -51,6 +51,8 @@ void PacketManager::sendHello(const std::string &destIp, int port,
         {"hostname", hostname},
         {"interfaces", interfaces}};
 
+    std::string helloMsgStr = helloMsg.dump();
+    helloMsg["hmac"] = computeHMAC(helloMsgStr, "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
     if (sendto(sock, helloMsg.dump().c_str(), helloMsg.dump().length(), 0,
                (sockaddr *)&addr, sizeof(addr)) < 0)
     {
