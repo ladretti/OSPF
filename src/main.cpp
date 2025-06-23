@@ -104,6 +104,9 @@ int main(int argc, char *argv[])
             {"neighbors", neighbors},
             {"networks", networks}};
 
+        std::string lsaStr = lsa.dump();
+        lsa["hmac"] = computeHMAC(lsaStr, std::getenv("SHARED_SECRET"));
+
         topoDb.updateLSA(lsa);
 
         lsm.purgeInactiveNeighbors();

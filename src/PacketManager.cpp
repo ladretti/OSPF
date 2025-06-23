@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <atomic>
 #include <bits/this_thread_sleep.h>
+#include "utils.hpp"
 
 using json = nlohmann::json;
 
@@ -89,6 +90,7 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
     char buffer[2048];
     while (running)
     {
+
         sockaddr_in sender{};
         socklen_t senderLen = sizeof(sender);
 
@@ -102,6 +104,22 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
             try
             {
                 json j = json::parse(buffer);
+                if (j.contains("hmac"))
+                {
+                    std::string receivedHmac = j["hmac"];
+                    j.erase("hmac");
+                    std::string computedHmac = computeHMAC(j.dump(), std::getenv("SHARED_SECRET"));
+                    if (receivedHmac != computedHmac)
+                    {
+                        std::cerr << "HMAC verification failed! Packet dropped." << std::endl;
+                        continue;
+                    }
+                }
+                else
+                {
+                    std::cerr << "No HMAC found! Packet dropped." << std::endl;
+                    continue;
+                }
                 if (j.contains("hostname") && j["hostname"] == hostname)
                 {
                     continue;

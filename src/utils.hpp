@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <openssl/hmac.h>
+#include <string>
 
 struct RouterConfig {
     std::string hostname;
@@ -17,3 +19,13 @@ RouterConfig getRouterConfig(const std::string& routerId, const std::string& con
 
 // Split a string by delimiter
 std::vector<std::string> split(const std::string& str, char delimiter);
+
+
+
+inline std::string computeHMAC(const std::string &data, const std::string &key) {
+    unsigned char* result;
+    unsigned int len = 32;
+    result = HMAC(EVP_sha256(), key.data(), key.size(),
+                  reinterpret_cast<const unsigned char*>(data.data()), data.size(), NULL, NULL);
+    return std::string(reinterpret_cast<char*>(result), len);
+}
