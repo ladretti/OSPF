@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
         }
         return interfacesName.empty() ? "eth0" : interfacesName[0];
     };
-    
+
     int port = config.port;
 
     std::cout << "Hostname: " << hostname << std::endl;
@@ -140,6 +140,7 @@ int main(int argc, char *argv[])
         for (const auto &[network, nextHop] : routingTable.table)
         {
             std::string iface = getInterfaceName(nextHop);
+            std::cout << "Network: " << network << std::endl;
             addRoute(network, nextHop, iface);
         }
 
