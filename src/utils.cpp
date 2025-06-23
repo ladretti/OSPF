@@ -19,29 +19,25 @@ std::map<std::string, RouterConfig> parseRouterConfig(const std::string &configF
 {
     std::map<std::string, RouterConfig> configs;
     std::ifstream file(configFile);
+
+    if (!file.is_open())
+    {
+        std::cerr << "Failed to open config file: " << configFile << std::endl;
+        return configs;
+    }
+
     std::string line;
     std::string currentSection;
-
     RouterConfig currentConfig;
 
     while (std::getline(file, line))
     {
-        line.erase(0, line.find_first_not_of(" \t\r\n"));
-        line.erase(line.find_last_not_of(" \t\r\n") + 1);
-
-        if (line.empty() || line[0] == '#' || (line.size() > 1 && line[0] == '/' && line[1] == '/'))
-            continue;
-
-        if (line.front() == '[' && line.back() == ']')
-        {
-            currentSection = line.substr(1, line.size() - 2);
-            configs[currentSection] = RouterConfig();
-            continue;
-        }
+        // Skip empty lines and comments
         if (line.empty() || line.substr(0, 2) == "//")
         {
             continue;
         }
+
         // Check for section header [RouterID]
         if (line[0] == '[' && line.back() == ']')
         {
