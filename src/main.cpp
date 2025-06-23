@@ -44,19 +44,6 @@ int main(int argc, char *argv[])
 
     const std::string hostname = config.hostname;
     std::vector<std::string> interfaces = config.interfaces;
-    std::vector<std::string> interfacesName = config.interfacesNames;
-
-    auto getInterfaceName = [&](const std::string &ip) -> std::string
-    {
-        for (size_t i = 0; i < interfaces.size(); ++i)
-        {
-            if (interfaces[i] == ip && i < interfacesName.size())
-            {
-                return interfacesName[i];
-            }
-        }
-        return interfacesName.empty() ? "eth0" : interfacesName[0];
-    };
     int port = config.port;
 
     std::cout << "Hostname: " << hostname << std::endl;
@@ -134,13 +121,8 @@ int main(int argc, char *argv[])
         std::cout << std::endl;
 
         auto routingTable = topoDb.computeRoutingTable(hostname);
-
+        
         routingTable.print();
-        for (const auto &[network, nextHop] : routingTable.table)
-        {
-            std::string iface = getInterfaceName(nextHop);
-            addRoute(network, nextHop, iface);
-        }
 
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
