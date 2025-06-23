@@ -139,8 +139,13 @@ int main(int argc, char *argv[])
         routingTable.print();
         for (const auto &[network, nextHop] : routingTable.table)
         {
+            std::cout << "Ajout route : " << network;
+            // On ne veut que les vraies adresses réseau (préfixes), pas les hostnames
+            if (network.find('/') == std::string::npos)
+                continue; // saute les hostnames
+
             std::string iface = getInterfaceName(nextHop);
-            std::cout << "Network: " << network << std::endl;
+            std::cout << "Ajout route : " << network << " via " << nextHop << " dev " << iface << std::endl;
             addRoute(network, nextHop, iface);
         }
 
