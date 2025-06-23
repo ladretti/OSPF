@@ -43,5 +43,6 @@ inline std::string toHex(const std::string &input) {
 
 inline void addRoute(const std::string& network, const std::string& via, const std::string& iface) {
     std::string cmd = "ip route replace " + network + " via " + via + " dev " + iface;
-    std::system(cmd.c_str());
+    std::cout << cmd << std::endl;
+    // std::system(cmd.c_str());
 }
