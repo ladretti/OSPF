@@ -6,21 +6,22 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <cstdlib>
+
 
 struct RouterConfig {
     std::string hostname;
     std::vector<std::string> interfaces;
+    std::vector<std::string> interfacesNames;
     int port;
 };
 
-// Parse the router config file and return all router configurations
 std::map<std::string, RouterConfig> parseRouterConfig(const std::string& configFile);
 
-// Get a specific router's configuration
 RouterConfig getRouterConfig(const std::string& routerId, const std::string& configFile);
 
-// Split a string by delimiter
 std::vector<std::string> split(const std::string& str, char delimiter);
+
 
 
 
@@ -38,4 +39,9 @@ inline std::string toHex(const std::string &input) {
         oss << std::hex << std::setw(2) << std::setfill('0') << (int)c;
     }
     return oss.str();
+}
+
+inline void addRoute(const std::string& network, const std::string& via, const std::string& iface) {
+    std::string cmd = "ip route replace " + network + " via " + via + " dev " + iface;
+    std::system(cmd.c_str());
 }
