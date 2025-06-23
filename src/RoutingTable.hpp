@@ -5,7 +5,6 @@
 
 class RoutingTable {
 public:
-    // destination -> next hop
     std::unordered_map<std::string, std::string> table;
 
     void print() const {

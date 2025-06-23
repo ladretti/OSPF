@@ -71,6 +71,15 @@ public:
                 }
             }
         }
+        std::set<std::string> localNetworks;
+        auto it = lsaMap.find(selfHostname);
+        if (it != lsaMap.end() && it->second.contains("networks"))
+        {
+            for (const auto &net : it->second["networks"])
+            {
+                localNetworks.insert(net);
+            }
+        }
 
         RoutingTable rt;
         for (const auto &[dest, _] : dist)
@@ -91,6 +100,8 @@ public:
             {
                 for (const auto &net : lsa["networks"])
                 {
+                    if (localNetworks.count(net))
+                        continue;
                     if (hostname == selfHostname)
                         continue;
                     if (rt.table.count(hostname))
