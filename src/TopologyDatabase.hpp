@@ -114,20 +114,4 @@ public:
         return rt;
     }
 
-    void print() const
-    {
-        for (const auto &[hostname, lsa] : lsaMap)
-        {
-            std::cout << "LSA from " << hostname << " (seq " << lsa["sequence_number"] << "): ";
-            if (lsa.contains("interfaces"))
-            {
-                std::cout << "Interfaces: ";
-                for (const auto &iface : lsa["interfaces"])
-                {
-                    std::cout << iface << " ";
-                }
-            }
-            std::cout << std::endl;
-        }
-    }
 };

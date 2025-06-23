@@ -88,7 +88,6 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
         return;
     }
 
-    std::cout << "Listening for packets on UDP port " << port << "...\n";
 
     char buffer[2048];
     while (running)
@@ -127,8 +126,6 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                 {
                     continue;
                 }
-                std::cout << "Received JSON:\n"
-                          << j.dump(4) << "\n";
 
                 if (j.contains("type") && j["type"] == "HELLO")
                 {
@@ -149,7 +146,6 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     char senderIp[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
 
-                    std::cout << "Received LSA from " << j["hostname"] << " at " << senderIp << std::endl;
 
                     bool updated = topoDb.updateLSA(j);
 
@@ -161,7 +157,6 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                         {
                             if (neighborIp != senderIp)
                             {
-                                std::cout << "Relaying LSA to " << neighborIp << std::endl;
                                 sendLSA(neighborIp, port, j);
                             }
                         }
