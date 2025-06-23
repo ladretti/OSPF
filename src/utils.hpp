@@ -4,6 +4,8 @@
 #include <map>
 #include <openssl/hmac.h>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 struct RouterConfig {
     std::string hostname;
