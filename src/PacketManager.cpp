@@ -155,11 +155,13 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
 
                     if (updated)
                     {
+                        // RELAY TO ALL ACTIVE NEIGHBORS (except sender)
                         auto neighbors = lsm.getActiveNeighbors();
                         for (const auto &neighborIp : neighbors)
                         {
                             if (neighborIp != senderIp)
                             {
+                                std::cout << "Relaying LSA to " << neighborIp << std::endl;
                                 sendLSA(neighborIp, port, j);
                             }
                         }

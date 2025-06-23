@@ -98,6 +98,7 @@ int main(int argc, char *argv[])
         }
 
         json lsa = {
+            {"type", "LSA"},
             {"hostname", hostname},
             {"sequence_number", mySeq++},
             {"interfaces", interfaces},
@@ -121,7 +122,7 @@ int main(int argc, char *argv[])
         std::cout << std::endl;
 
         auto routingTable = topoDb.computeRoutingTable(hostname);
-        
+
         routingTable.print();
 
         std::this_thread::sleep_for(std::chrono::seconds(5));
