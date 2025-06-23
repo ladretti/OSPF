@@ -97,13 +97,29 @@ int main(int argc, char *argv[])
             }
         }
 
+        std::vector<json> networkInterfaces;
+        for (size_t i = 0; i < interfaces.size(); ++i)
+        {
+            const auto &ifaceIp = interfaces[i];
+            size_t lastDot = ifaceIp.find_last_of('.');
+            if (lastDot != std::string::npos)
+            {
+                std::string net = ifaceIp.substr(0, lastDot + 1) + "0/24";
+                std::string ifaceName = (i < config.interfacesNames.size()) ? config.interfacesNames[i] : "";
+                networkInterfaces.push_back({{"network", net},
+                                             {"interface_ip", ifaceIp},
+                                             {"interface_name", ifaceName}});
+            }
+        }
+
         json lsa = {
             {"type", "LSA"},
             {"hostname", hostname},
             {"sequence_number", mySeq++},
             {"interfaces", interfaces},
             {"neighbors", neighbors},
-            {"networks", networks}};
+            {"networks", networks},
+            {"network_interfaces", networkInterfaces}};
 
         std::string lsaStr = lsa.dump();
 
@@ -124,6 +140,37 @@ int main(int argc, char *argv[])
         auto routingTable = topoDb.computeRoutingTable(hostname);
 
         routingTable.print();
+        // for (const auto &[dest, nextHop] : routingTable.table)
+        // {
+        //     // Ignore les routes locales ou les routes vers des routeurs (hostname)
+        //     if (nextHop == "local" || nextHop == hostname)
+        //         continue;
+
+        //     // On ne traite que les réseaux (ex: 10.2.0.0/24)
+        //     if (dest.find('/') == std::string::npos)
+        //         continue;
+
+        //     // Trouver l'IP du nextHop (à adapter selon ta structure)
+        //     // Ici, on suppose que tu as une fonction pour obtenir l'IP d'un hostname voisin
+        //     std::string nextHopIp = ""; // À compléter selon ta logique
+        //     for (const auto &lsaPair : topoDb.lsaMap)
+        //     {
+        //         if (lsaPair.first == nextHop && lsaPair.second.contains("interfaces"))
+        //         {
+        //             // Prend la première interface IP du nextHop
+        //             nextHopIp = lsaPair.second["interfaces"][0];
+        //             break;
+        //         }
+        //     }
+
+        //     // Trouver l'interface locale à utiliser (ex: la première interface)
+        //     std::string iface = interfaces[0];
+
+        //     if (!nextHopIp.empty())
+        //     {
+        //         addRoute(dest, nextHopIp, iface);
+        //     }
+        // }
 
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
