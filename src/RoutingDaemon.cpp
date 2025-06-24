@@ -300,15 +300,54 @@ std::vector<double> RoutingDaemon::getLinkCapabilities() const
 {
     std::vector<double> capacities;
     auto activeNeighbors = lsm->getActiveNeighbors();
+    auto ipIfacePairs = getLocalIpInterfaceMapping();
 
     for (const auto &neighbor : activeNeighbors)
     {
-        // Déterminer la capacité basée sur le type d'interface
-        // Exemple : Ethernet = 1000 Mbps, WiFi = 100 Mbps, etc.
-        double capacity = 1000.0; // Valeur par défaut
+        double capacity = 1000.0; // Valeur par défaut (1 Gbps)
 
-        // Ici vous pourriez implémenter une logique plus sophistiquée
-        // basée sur les interfaces réseau réelles
+        // Trouver l'interface locale utilisée pour ce voisin
+        for (const auto &localIp : interfaces)
+        {
+            size_t lastDot = localIp.find_last_of('.');
+            if (lastDot == std::string::npos)
+                continue;
+            std::string localNet = localIp.substr(0, lastDot + 1);
+
+            size_t neighLastDot = neighbor.find_last_of('.');
+            if (neighLastDot == std::string::npos)
+                continue;
+            std::string neighNet = neighbor.substr(0, neighLastDot + 1);
+
+            if (localNet == neighNet)
+            {
+                // Trouver le nom de l'interface
+                for (const auto &[ip, ifaceName] : ipIfacePairs)
+                {
+                    if (ip == localIp)
+                    {
+                        // Déterminer la capacité basée sur le type d'interface
+                        if (ifaceName.find("eth") != std::string::npos ||
+                            ifaceName.find("enp") != std::string::npos)
+                        {
+                            capacity = 1000.0; // Ethernet 1 Gbps
+                        }
+                        else if (ifaceName.find("wlan") != std::string::npos ||
+                                 ifaceName.find("wifi") != std::string::npos)
+                        {
+                            capacity = 100.0; // WiFi ~100 Mbps
+                        }
+                        else if (ifaceName.find("lo") != std::string::npos)
+                        {
+                            capacity = 10000.0; // Loopback très rapide
+                        }
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
         capacities.push_back(capacity);
     }
 
@@ -322,10 +361,41 @@ std::vector<bool> RoutingDaemon::getLinkStates() const
 
     for (const auto &neighbor : activeNeighbors)
     {
-        // Tous les voisins actifs ont des liens actifs par définition
-        // Vous pourriez ajouter une logique plus complexe ici
         states.push_back(true);
     }
 
     return states;
+}
+
+void RoutingDaemon::showRoutingMetrics() const
+{
+    std::cout << "\n=== Routing Metrics ===" << std::endl;
+    std::cout << "Router: " << hostname << std::endl;
+
+    auto routingTable = topoDb->computeRoutingTable(hostname);
+
+    for (const auto &[dest, nextHop] : routingTable.table)
+    {
+        std::cout << "Destination: " << dest << " -> Next Hop: " << nextHop << std::endl;
+
+        if (topoDb->lsaMap.count(nextHop))
+        {
+            const auto &lsa = topoDb->lsaMap.at(nextHop);
+            if (lsa.contains("link_capacities") && lsa.contains("neighbors"))
+            {
+                const auto &neighbors = lsa["neighbors"];
+                const auto &capacities = lsa["link_capacities"];
+
+                for (size_t i = 0; i < neighbors.size(); ++i)
+                {
+                    if (i < capacities.size())
+                    {
+                        std::cout << "  Link to " << neighbors[i]
+                                  << ": " << capacities[i].get<double>() << " Mbps" << std::endl;
+                    }
+                }
+            }
+        }
+    }
+    std::cout << "======================" << std::endl;
 }

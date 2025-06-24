@@ -137,6 +137,15 @@ void RoutingCLI::handleCommand(const std::string &command)
             daemon->showPingResults(neighbor, 3);
         }
     }
+    else if (cmd == "metrics")
+    {
+        if (!daemon->isRunning())
+        {
+            std::cout << "Daemon must be running to show routing metrics" << std::endl;
+            return;
+        }
+        daemon->showRoutingMetrics();
+    }
     else if (cmd == "status")
     {
         daemon->getStatus();
@@ -185,6 +194,7 @@ void RoutingCLI::printHelp()
     std::cout << "  stop        - Stop the routing daemon" << std::endl;
     std::cout << "  status      - Show daemon status and configuration" << std::endl;
     std::cout << "  neighbors   - List active neighbor routers" << std::endl;
+    std::cout << "  metrics     - Show routing metrics" << std::endl;
     std::cout << "  request <ip> - Request neighbor list from specific router" << std::endl;
     std::cout << "  ping <ip>   - Ping a specific IP address" << std::endl;
     std::cout << "  ping <ip> <count> - Ping with custom packet count" << std::endl;
