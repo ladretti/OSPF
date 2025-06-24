@@ -360,20 +360,19 @@ void RoutingDaemon::mainLoop()
             // Sauvegarder la nouvelle table de routage
             lastRoutingTable = std::map<std::string, std::string>(newRoutingTable.table.begin(), newRoutingTable.table.end());
         }
+
+        // 8. Sleep adaptatif basé sur la stabilité du réseau
+        int sleepTime = getAdaptiveSleepTime();
+
+        // Calculer le temps déjà écoulé dans cette boucle
+        auto loopEnd = std::chrono::steady_clock::now();
+        auto loopDuration = std::chrono::duration_cast<std::chrono::milliseconds>(loopEnd - loopStart).count();
+
+        // Ajuster le sleep pour maintenir un timing cohérent
+        int remainingSleep = std::max(1000, sleepTime - static_cast<int>(loopDuration)); // Minimum 1s
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(remainingSleep));
     }
-
-    // 8. Sleep adaptatif basé sur la stabilité du réseau
-    int sleepTime = getAdaptiveSleepTime();
-
-    // Calculer le temps déjà écoulé dans cette boucle
-    auto loopEnd = std::chrono::steady_clock::now();
-    auto loopDuration = std::chrono::duration_cast<std::chrono::milliseconds>(loopEnd - loopStart).count();
-
-    // Ajuster le sleep pour maintenir un timing cohérent
-    int remainingSleep = std::max(1000, sleepTime - static_cast<int>(loopDuration)); // Minimum 1s
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(remainingSleep));
-}
 }
 
 void RoutingDaemon::requestNeighborsFrom(const std::string &targetIp) const
