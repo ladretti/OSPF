@@ -248,22 +248,28 @@ void RoutingDaemon::mainLoop()
 
         // 6. Recalculer les routes seulement si nécessaire (triggered updates)
         static std::map<std::string, std::string> lastRoutingTable;
-        auto newRoutingTable = topoDb->computeRoutingTable(hostname);
+        static bool firstRun = true; // ← Ajouter cette ligne
 
+        auto newRoutingTable = topoDb->computeRoutingTable(hostname);
         bool routingTableChanged = false;
-        if (newRoutingTable.table.size() != lastRoutingTable.size())
+
+        if (!firstRun)
         {
-            routingTableChanged = true;
-        }
-        else
-        {
-            for (const auto &[dest, nextHop] : newRoutingTable.table)
+            // Logique existante seulement si ce n'est pas le premier run
+            if (newRoutingTable.table.size() != lastRoutingTable.size())
             {
-                auto it = lastRoutingTable.find(dest);
-                if (it == lastRoutingTable.end() || it->second != nextHop)
+                routingTableChanged = true;
+            }
+            else
+            {
+                for (const auto &[dest, nextHop] : newRoutingTable.table)
                 {
-                    routingTableChanged = true;
-                    break;
+                    auto it = lastRoutingTable.find(dest);
+                    if (it == lastRoutingTable.end() || it->second != nextHop)
+                    {
+                        routingTableChanged = true;
+                        break;
+                    }
                 }
             }
         }
