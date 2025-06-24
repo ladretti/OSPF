@@ -167,6 +167,15 @@ void RoutingCLI::handleCommand(const std::string &command)
             std::cout << "  No active neighbors" << std::endl;
         }
     }
+    else if (cmd == "routes" || cmd == "table")
+    {
+        if (!daemon->isRunning())
+        {
+            std::cout << "Daemon must be running to show routing table" << std::endl;
+            return;
+        }
+        daemon->showRoutingTable();
+    }
     else if (cmd == "request")
     {
         std::string targetIp;
@@ -194,6 +203,7 @@ void RoutingCLI::printHelp()
     std::cout << "  stop        - Stop the routing daemon" << std::endl;
     std::cout << "  status      - Show daemon status and configuration" << std::endl;
     std::cout << "  neighbors   - List active neighbor routers" << std::endl;
+    std::cout << "  routes/table - Show current routing table" << std::endl;
     std::cout << "  metrics     - Show routing metrics" << std::endl;
     std::cout << "  request <ip> - Request neighbor list from specific router" << std::endl;
     std::cout << "  ping <ip>   - Ping a specific IP address" << std::endl;

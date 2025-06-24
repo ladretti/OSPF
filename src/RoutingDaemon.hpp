@@ -24,6 +24,7 @@ public:
     void showPingResults(const std::string &target, int count = 4) const;
     void requestNeighborsFrom(const std::string &targetIp) const;
     void showRoutingMetrics() const;
+    void showRoutingTable() const;
 
 private:
     void runDaemon();

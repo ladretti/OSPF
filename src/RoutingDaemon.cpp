@@ -399,3 +399,108 @@ void RoutingDaemon::showRoutingMetrics() const
     }
     std::cout << "======================" << std::endl;
 }
+
+
+void RoutingDaemon::showRoutingTable() const
+{
+    if (!running.load())
+    {
+        std::cout << "Daemon must be running to show routing table" << std::endl;
+        return;
+    }
+
+    std::cout << "\n=== Current Routing Table ===" << std::endl;
+    std::cout << "Router: " << hostname << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+    
+    auto routingTable = topoDb->computeRoutingTable(hostname);
+    
+    if (routingTable.table.empty())
+    {
+        std::cout << "No routes available" << std::endl;
+        std::cout << "=================================" << std::endl;
+        return;
+    }
+
+    // Afficher l'en-tête
+    std::cout << std::left << std::setw(20) << "Destination" 
+              << std::setw(15) << "Next Hop" 
+              << std::setw(15) << "Interface"
+              << std::setw(10) << "Metric" << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+
+    // Obtenir les interfaces réseau pour trouver les noms d'interfaces
+    auto ipIfacePairs = getLocalIpInterfaceMapping();
+    std::vector<json> networkInterfaces;
+    for (const auto &[ifaceIp, ifaceName] : ipIfacePairs)
+    {
+        if (std::find(interfaces.begin(), interfaces.end(), ifaceIp) != interfaces.end())
+        {
+            size_t lastDot = ifaceIp.find_last_of('.');
+            if (lastDot != std::string::npos)
+            {
+                std::string net = ifaceIp.substr(0, lastDot + 1) + "0/24";
+                networkInterfaces.push_back({{"network", net},
+                                           {"interface_ip", ifaceIp},
+                                           {"interface_name", ifaceName}});
+            }
+        }
+    }
+
+    for (const auto &[dest, nextHop] : routingTable.table)
+    {
+        std::string interfaceName = "unknown";
+        std::string metric = "1";
+
+        if (nextHop == "local" || nextHop == hostname)
+        {
+            interfaceName = "local";
+            metric = "0";
+        }
+        else
+        {
+            // Trouver l'interface de sortie
+            auto lsaIt = topoDb->lsaMap.find(nextHop);
+            if (lsaIt != topoDb->lsaMap.end() && lsaIt->second.contains("interfaces"))
+            {
+                const auto &nextHopIfaces = lsaIt->second["interfaces"];
+                for (size_t i = 0; i < interfaces.size(); ++i)
+                {
+                    const std::string &localIp = interfaces[i];
+                    size_t lastDot = localIp.find_last_of('.');
+                    if (lastDot == std::string::npos) continue;
+                    std::string localNet = localIp.substr(0, lastDot + 1);
+
+                    for (const auto &nhIp : nextHopIfaces)
+                    {
+                        size_t nhLastDot = nhIp.get<std::string>().find_last_of('.');
+                        if (nhLastDot == std::string::npos) continue;
+                        std::string nhNet = nhIp.get<std::string>().substr(0, nhLastDot + 1);
+
+                        if (localNet == nhNet)
+                        {
+                            for (const auto &ni : networkInterfaces)
+                            {
+                                if (ni["interface_ip"] == localIp)
+                                {
+                                    interfaceName = ni["interface_name"];
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    if (interfaceName != "unknown") break;
+                }
+            }
+        }
+
+        std::cout << std::left << std::setw(20) << dest 
+                  << std::setw(15) << nextHop 
+                  << std::setw(15) << interfaceName
+                  << std::setw(10) << metric << std::endl;
+    }
+
+    std::cout << "=================================" << std::endl;
+    std::cout << "Total routes: " << routingTable.table.size() << std::endl;
+}
