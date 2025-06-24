@@ -65,6 +65,20 @@ int main(int argc, char *argv[])
 
         std::set<std::string> uniqueNeighbors(activeNeighborHostnames.begin(), activeNeighborHostnames.end());
         std::vector<std::string> neighbors(uniqueNeighbors.begin(), uniqueNeighbors.end());
+        std::cout << "Voisins actifs et leurs interfaces :" << std::endl;
+        for (const auto &neighborHostname : neighbors)
+        {
+            auto lsaIt = topoDb.lsaMap.find(neighborHostname);
+            if (lsaIt != topoDb.lsaMap.end() && lsaIt->second.contains("interfaces"))
+            {
+                std::cout << "  " << neighborHostname << " : ";
+                for (const auto &ip : lsaIt->second["interfaces"])
+                {
+                    std::cout << ip.get<std::string>() << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
 
         for (const auto &neighbor : activeNeighbors)
         {
