@@ -137,7 +137,10 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     std::string neighborHostname = j.value("hostname", "");
                     lsm.updateNeighbor(senderIp, neighborHostname);
                 }
-                if (j.contains("type") && j["type"] == "LSA")
+                if (j.contains("type") && (j["type"] == "LSA" ||
+                                           j["type"] == "LSA_FULL_COMPRESSED" ||
+                                           j["type"] == "LSA_DIFFERENTIAL" ||
+                                           j["type"] == "LSA_COMPRESSED"))
                 {
                     char senderIp[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
@@ -146,17 +149,47 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     std::cout << "DEBUG: LSA sender hostname: " << j.value("hostname", "unknown") << std::endl;
                     std::cout << "DEBUG: LSA sequence: " << j.value("sequence_number", -1) << std::endl;
 
-                    bool updated = topoDb.updateLSA(j);
+                    // Gérer les différents types
+                    json lsaToProcess = j;
+
+                    if (j["type"] == "LSA_COMPRESSED")
+                    {
+                        // Décompresser si nécessaire
+                        if (j.contains("compressed_data"))
+                        {
+                            std::string decompressed = decompressData(j["compressed_data"]);
+                            if (!decompressed.empty())
+                            {
+                                lsaToProcess = json::parse(decompressed);
+                            }
+                        }
+                    }
+                    else if (j["type"] == "LSA_DIFFERENTIAL")
+                    {
+                        // Pour l'instant, traiter comme un LSA normal
+                        // TODO: Implémenter la logique différentielle si nécessaire
+                        lsaToProcess = j;
+                    }
+                    else if (j["type"] == "LSA_FULL_COMPRESSED")
+                    {
+                        // Traiter comme un LSA normal
+                        lsaToProcess = j;
+                    }
+
+                    bool updated = topoDb.updateLSA(lsaToProcess);
                     std::cout << "DEBUG: LSA updated in database: " << updated << std::endl;
+
                     if (updated)
                     {
+                        std::cout << "DEBUG: LSA database now has " << topoDb.lsaMap.size() << " entries" << std::endl;
+
                         // RELAY TO ALL ACTIVE NEIGHBORS (except sender)
                         auto neighbors = lsm.getActiveNeighbors();
                         for (const auto &neighborIp : neighbors)
                         {
                             if (neighborIp != senderIp)
                             {
-                                sendLSA(neighborIp, port, j);
+                                sendLSA(neighborIp, port, lsaToProcess);
                             }
                         }
                     }
