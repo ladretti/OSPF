@@ -8,8 +8,6 @@
 #include <atomic>
 #include <vector>
 #include "TopologyDatabase.hpp"
-#include <sys/un.h>
-#include <unistd.h>
 
 using json = nlohmann::json;
 
@@ -24,7 +22,7 @@ std::string calculateBroadcastAddress(const std::string &ip)
 
 int main(int argc, char *argv[])
 {
-    std::string routerId = "R";
+    std::string routerId = "R_1";
 
     TopologyDatabase topoDb;
 
@@ -53,58 +51,7 @@ int main(int argc, char *argv[])
     std::thread receiverThread([&pm, &lsm, &running, port, hostname, &topoDb]()
                                { pm.receivePackets(port, lsm, running, hostname, topoDb); });
 
-    std::thread commandThread([&running, &lsm]()
-                              {
-    int server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (server_fd < 0) {
-        perror("socket");
-        return;
-    }
-
-    sockaddr_un addr{};
-    addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, "/tmp/routing.sock");
-    unlink("/tmp/routing.sock");
-    if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        perror("bind");
-        return;
-    }
-
-    listen(server_fd, 5);
-
-    while (running) {
-        int client_fd = accept(server_fd, nullptr, nullptr);
-         if (client_fd < 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            continue;
-        }
-
-        char buffer[256] = {0};
-        read(client_fd, buffer, sizeof(buffer));
-        std::string command(buffer);
-
-        std::string response;
-        if (command.find("neighbors") != std::string::npos) {
-            auto neighbors = lsm.getActiveNeighborHostnames();
-            response = "Neighbors:\n";
-            for (const auto& n : neighbors) {
-                response += "- " + n + "\n";
-            }
-        } else if (command.find("stop") != std::string::npos) {
-            response = "Stopping daemon\n";
-            running = false;
-        } else {
-            response = "Unknown command\n";
-        }
-
-        write(client_fd, response.c_str(), response.size());
-        close(client_fd);
-    }
-
-    close(server_fd);
-    unlink("/tmp/routing.sock"); });
-
-    while (running)
+    while (true)
     {
 
         for (const auto &iface : interfaces)
@@ -118,21 +65,6 @@ int main(int argc, char *argv[])
 
         std::set<std::string> uniqueNeighbors(activeNeighborHostnames.begin(), activeNeighborHostnames.end());
         std::vector<std::string> neighbors(uniqueNeighbors.begin(), uniqueNeighbors.end());
-        std::cout << "Voisins actifs et leurs interfaces :" << std::endl;
-        for (const auto &neighborHostname : neighbors)
-        {
-            auto lsaIt = topoDb.lsaMap.find(neighborHostname);
-            if (lsaIt != topoDb.lsaMap.end() && lsaIt->second.contains("network_interfaces"))
-            {
-                std::cout << "  " << neighborHostname << " : ";
-                for (const auto &ni : lsaIt->second["network_interfaces"])
-                {
-                    std::cout << ni["interface_name"].get<std::string>() << "("
-                              << ni["interface_ip"].get<std::string>() << ") ";
-                }
-                std::cout << std::endl;
-            }
-        }
 
         for (const auto &neighbor : activeNeighbors)
         {
@@ -254,11 +186,9 @@ int main(int argc, char *argv[])
 
     running = false;
     if (receiverThread.joinable())
+    {
         receiverThread.join();
-
-    if (commandThread.joinable())
-        commandThread.join();
+    }
 
     return 0;
 }
-
