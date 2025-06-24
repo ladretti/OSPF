@@ -253,7 +253,7 @@ void RoutingDaemon::mainLoop()
 
         auto newRoutingTable = topoDb->computeRoutingTable(hostname);
 
-        td::cout << "DEBUG: LSA Database contains " << topoDb->lsaMap.size() << " entries:" << std::endl;
+        std::cout << "DEBUG: LSA Database contains " << topoDb->lsaMap.size() << " entries:" << std::endl;
         for (const auto &[host, lsa] : topoDb->lsaMap)
         {
             std::cout << "  - " << host << std::endl;
