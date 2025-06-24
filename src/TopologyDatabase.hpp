@@ -45,9 +45,7 @@ public:
         {
             if (lsa.contains("neighbors") && lsa.contains("link_capacities") && lsa.contains("link_states"))
             {
-                std::cout << "DEBUG: Building graph for " << hostname << std::endl;
                 const auto &neighbors = lsa["neighbors"];
-                std::cout << "DEBUG: Neighbors: " << neighbors.dump() << std::endl;
                 const auto &capacities = lsa["link_capacities"];
                 const auto &states = lsa["link_states"];
 
@@ -141,7 +139,6 @@ public:
                     if (localNetworks.count(net) || hostname == selfHostname)
                         continue;
 
-                    // Calculer le next-hop pour ce réseau via Dijkstra
                     if (dist.count(hostname) && dist.at(hostname) != std::numeric_limits<double>::infinity())
                     {
                         std::string hop = hostname;
@@ -149,7 +146,19 @@ public:
                         {
                             hop = prev[hop];
                         }
-                        rt.table[net] = hop; // Route vers le RÉSEAU avec next-hop
+
+                        // ✅ DÉPARTAGE STABLE : Si route existe déjà, garder la lexicographiquement plus petite
+                        if (rt.table.count(net))
+                        {
+                            if (hop < rt.table[net])
+                            {
+                                rt.table[net] = hop;
+                            }
+                        }
+                        else
+                        {
+                            rt.table[net] = hop;
+                        }
                     }
                 }
             }
