@@ -87,6 +87,30 @@ void RoutingDaemon::stop()
     }
 }
 
+bool RoutingDaemon::pingHost(const std::string &target, int count) const
+{
+    std::string cmd = "ping -c " + std::to_string(count) + " " + target + " > /dev/null 2>&1";
+    int result = std::system(cmd.c_str());
+    return result == 0;
+}
+
+void RoutingDaemon::showPingResults(const std::string &target, int count) const
+{
+    std::cout << "Pinging " << target << " with " << count << " packets..." << std::endl;
+
+    std::string cmd = "ping -c " + std::to_string(count) + " " + target;
+    int result = std::system(cmd.c_str());
+
+    if (result == 0)
+    {
+        std::cout << "Ping to " << target << " successful" << std::endl;
+    }
+    else
+    {
+        std::cout << "Ping to " << target << " failed" << std::endl;
+    }
+}
+
 bool RoutingDaemon::isRunning() const
 {
     return running.load();
@@ -128,18 +152,20 @@ void RoutingDaemon::mainLoop()
 
     while (running.load())
     {
-        for (const auto &iface : interfaces) {
+        for (const auto &iface : interfaces)
+        {
             std::string broadcastAddr = calculateBroadcastAddress(iface);
             pm->sendHello(broadcastAddr, port, hostname, interfaces);
         }
 
-       auto activeNeighbors = lsm->getActiveNeighbors();
+        auto activeNeighbors = lsm->getActiveNeighbors();
         auto activeNeighborHostnames = lsm->getActiveNeighborHostnames();
 
         std::set<std::string> uniqueNeighbors(activeNeighborHostnames.begin(), activeNeighborHostnames.end());
         std::vector<std::string> neighbors(uniqueNeighbors.begin(), uniqueNeighbors.end());
 
-        for (const auto &neighbor : activeNeighbors) {
+        for (const auto &neighbor : activeNeighbors)
+        {
             pm->sendHello(neighbor, port, hostname, interfaces);
             pm->sendLSA(neighbor, port, topoDb->lsaMap[hostname]);
         }

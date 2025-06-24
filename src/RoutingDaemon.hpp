@@ -17,6 +17,9 @@ public:
     
     std::vector<std::string> getActiveNeighbors() const;
     void getStatus() const;
+
+    bool pingHost(const std::string& target, int count = 4) const;
+    void showPingResults(const std::string& target, int count = 4) const;
     
 private:
     void runDaemon();
