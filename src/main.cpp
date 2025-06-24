@@ -84,17 +84,20 @@ int main(int argc, char *argv[])
         }
 
         std::vector<json> networkInterfaces;
-        for (size_t i = 0; i < interfaces.size(); ++i)
+        auto ipIfacePairs = getLocalIpInterfaceMapping();
+        for (const auto &[ifaceIp, ifaceName] : ipIfacePairs)
         {
-            const auto &ifaceIp = interfaces[i];
-            size_t lastDot = ifaceIp.find_last_of('.');
-            if (lastDot != std::string::npos)
+            // Vérifie que ifaceIp est dans ta config (pour ne pas annoncer les IPs de loopback, etc.)
+            if (std::find(interfaces.begin(), interfaces.end(), ifaceIp) != interfaces.end())
             {
-                std::string net = ifaceIp.substr(0, lastDot + 1) + "0/24";
-                std::string ifaceName = (i < config.interfacesNames.size()) ? config.interfacesNames[i] : "";
-                networkInterfaces.push_back({{"network", net},
-                                             {"interface_ip", ifaceIp},
-                                             {"interface_name", ifaceName}});
+                size_t lastDot = ifaceIp.find_last_of('.');
+                if (lastDot != std::string::npos)
+                {
+                    std::string net = ifaceIp.substr(0, lastDot + 1) + "0/24";
+                    networkInterfaces.push_back({{"network", net},
+                                                 {"interface_ip", ifaceIp},
+                                                 {"interface_name", ifaceName}});
+                }
             }
         }
 
@@ -157,12 +160,13 @@ int main(int argc, char *argv[])
                         if (localNet == nhNet)
                         {
                             nextHopIp = nhIp.get<std::string>();
-                            // Associe le nom d'interface à l'IP locale trouvée
-                            auto it = std::find(interfaces.begin(), interfaces.end(), localIp);
-                            if (it != interfaces.end())
+                            for (const auto &ni : networkInterfaces)
                             {
-                                size_t idx = std::distance(interfaces.begin(), it);
-                                iface = (idx < config.interfacesNames.size()) ? config.interfacesNames[idx] : "";
+                                if (ni["interface_ip"] == localIp)
+                                {
+                                    iface = ni["interface_name"];
+                                    break;
+                                }
                             }
                             break;
                         }
