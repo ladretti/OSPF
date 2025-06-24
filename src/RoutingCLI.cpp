@@ -143,26 +143,34 @@ void RoutingCLI::handleCommand(const std::string &command)
     }
     else if (cmd == "neighbors")
     {
-        auto neighbors = daemon->getActiveNeighbors();
-        std::cout << "Active neighbors (" << neighbors.size() << "):" << std::endl;
-        for (const auto &neighbor : neighbors)
+        auto neighborIps = daemon->getActiveNeighbors();
+        auto neighborHostnames = daemon->getActiveNeighborHostnames();
+
+        std::cout << "Active neighbors (" << neighborIps.size() << "):" << std::endl;
+
+        for (size_t i = 0; i < std::min(neighborIps.size(), neighborHostnames.size()); ++i)
         {
-            std::cout << "  - " << neighbor << std::endl;
+            std::cout << "  - " << neighborHostnames[i] << " (" << neighborIps[i] << ")" << std::endl;
+        }
+
+        if (neighborIps.empty())
+        {
+            std::cout << "  No active neighbors" << std::endl;
         }
     }
     else if (cmd == "request")
+    {
+        std::string targetIp;
+        if (iss >> targetIp)
         {
-            std::string targetIp;
-            if (iss >> targetIp)
-            {
-                daemon->requestNeighborsFrom(targetIp);
-            }
-            else
-            {
-                std::cout << "Usage: request <target_ip>" << std::endl;
-                std::cout << "Example: request 192.168.1.1" << std::endl;
-            }
+            daemon->requestNeighborsFrom(targetIp);
         }
+        else
+        {
+            std::cout << "Usage: request <target_ip>" << std::endl;
+            std::cout << "Example: request 192.168.1.1" << std::endl;
+        }
+    }
     else
     {
         std::cout << "Unknown command: " << cmd << std::endl;
@@ -170,7 +178,8 @@ void RoutingCLI::handleCommand(const std::string &command)
     }
 }
 
-void RoutingCLI::printHelp() {
+void RoutingCLI::printHelp()
+{
     std::cout << "Available commands:" << std::endl;
     std::cout << "  start       - Start the routing daemon" << std::endl;
     std::cout << "  stop        - Stop the routing daemon" << std::endl;

@@ -17,6 +17,7 @@ public:
     bool isRunning() const;
 
     std::vector<std::string> getActiveNeighbors() const;
+    std::vector<std::string> getActiveNeighborHostnames() const;
     void getStatus() const;
 
     bool pingHost(const std::string &target, int count = 4) const;

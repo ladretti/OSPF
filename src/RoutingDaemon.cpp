@@ -123,6 +123,11 @@ std::vector<std::string> RoutingDaemon::getActiveNeighbors() const
     return lsm->getActiveNeighbors();
 }
 
+std::vector<std::string> RoutingDaemon::getActiveNeighborHostnames() const {
+    if (!lsm) return {};
+    return lsm->getActiveNeighborHostnames();
+}
+
 void RoutingDaemon::getStatus() const
 {
     std::cout << "Daemon Status: " << (running.load() ? "Running" : "Stopped") << std::endl;

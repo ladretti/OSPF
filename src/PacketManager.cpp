@@ -159,11 +159,39 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     char senderIp[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
 
-                    // Récupérer la liste des voisins actifs
-                    auto neighbors = lsm.getActiveNeighborHostnames();
+                    auto neighborIps = lsm.getActiveNeighbors();
+                    auto neighborHostnames = lsm.getActiveNeighborHostnames();
 
-                    // Envoyer la réponse
-                    sendNeighborResponse(senderIp, port, hostname, neighbors);
+                    json neighbors = json::array();
+                    for (size_t i = 0; i < std::min(neighborIps.size(), neighborHostnames.size()); ++i)
+                    {
+                        neighbors.push_back({{"ip", neighborIps[i]},
+                                             {"hostname", neighborHostnames[i]}});
+                    }
+
+                    json responseMsg = {
+                        {"type", "NEIGHBOR_RESPONSE"},
+                        {"hostname", hostname},
+                        {"neighbors", neighbors}};
+
+                    std::string responseStr = responseMsg.dump();
+                    std::string hmac = computeHMAC(responseStr, "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
+                    responseMsg["hmac"] = toHex(hmac);
+
+                    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+                    if (sock >= 0)
+                    {
+                        sockaddr_in addr{};
+                        addr.sin_family = AF_INET;
+                        addr.sin_port = htons(port);
+
+                        if (inet_pton(AF_INET, senderIp, &addr.sin_addr) > 0)
+                        {
+                            sendto(sock, responseMsg.dump().c_str(), responseMsg.dump().length(), 0,
+                                   (sockaddr *)&addr, sizeof(addr));
+                        }
+                        close(sock);
+                    }
                 }
 
                 if (j.contains("type") && j["type"] == "NEIGHBOR_RESPONSE")
@@ -175,9 +203,19 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     {
                         auto neighbors = j["neighbors"];
                         std::cout << "Active neighbors (" << neighbors.size() << "):" << std::endl;
+
                         for (const auto &neighbor : neighbors)
                         {
-                            std::cout << "  - " << neighbor.get<std::string>() << std::endl;
+                            if (neighbor.contains("hostname") && neighbor.contains("ip"))
+                            {
+                                std::cout << "  - " << neighbor["hostname"].get<std::string>()
+                                          << " (" << neighbor["ip"].get<std::string>() << ")" << std::endl;
+                            }
+                            else if (neighbor.is_string())
+                            {
+                                // Compatibilité avec l'ancien format
+                                std::cout << "  - " << neighbor.get<std::string>() << std::endl;
+                            }
                         }
                     }
                     else
