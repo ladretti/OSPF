@@ -133,13 +133,9 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
 
                     std::string neighborHostname = j.value("hostname", "");
-                    if (lsm.updateNeighbor(senderIp, neighborHostname))
-                    {
-                        if (!neighborHostname.empty())
-                        {
-                            std::cout << "Discovered neighbor: " << neighborHostname << " at " << senderIp << std::endl;
-                        }
-                    }
+                    lsm.updateNeighbor(senderIp, neighborHostname);
+                    
+                    
                 }
                 if (j.contains("type") && j["type"] == "LSA")
                 {
@@ -165,7 +161,6 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
             }
             catch (...)
             {
-                std::cout << "Received invalid JSON: " << buffer << "\n";
             }
         }
         else if (len == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))

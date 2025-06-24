@@ -190,15 +190,8 @@ void RoutingDaemon::mainLoop()
 
         lsm->purgeInactiveNeighbors();
 
-        for (const auto &neighbor : lsm->getActiveNeighbors())
-        {
-            std::cout << neighbor << " ";
-        }
-        std::cout << std::endl;
-
         auto routingTable = topoDb->computeRoutingTable(hostname);
 
-        routingTable.print();
         for (const auto &[dest, nextHop] : routingTable.table)
         {
             if (nextHop == "local" || nextHop == hostname)
