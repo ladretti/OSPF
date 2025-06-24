@@ -157,7 +157,12 @@ int main(int argc, char *argv[])
                         if (localNet == nhNet)
                         {
                             nextHopIp = nhIp.get<std::string>();
-                            iface = (i < config.interfacesNames.size()) ? config.interfacesNames[i] : "";
+                            auto it = std::find(interfaces.begin(), interfaces.end(), localIp);
+                            if (it != interfaces.end())
+                            {
+                                size_t idx = std::distance(interfaces.begin(), it);
+                                iface = (idx < config.interfacesNames.size()) ? config.interfacesNames[idx] : "";
+                            }
                             break;
                         }
                     }
