@@ -252,27 +252,22 @@ void RoutingDaemon::mainLoop()
         static bool firstRun = true;
 
         auto newRoutingTable = topoDb->computeRoutingTable(hostname);
-
         std::cout << "DEBUG: LSA Database contains " << topoDb->lsaMap.size() << " entries:" << std::endl;
-        for (const auto &[host, lsa] : topoDb->lsaMap)
+        for (const auto &[routerName, lsa] : topoDb->lsaMap)
         {
-            std::cout << "  - " << host << std::endl;
+            std::cout << "  - " << routerName << std::endl;
             if (lsa.contains("networks"))
             {
                 std::cout << "    Networks: " << lsa["networks"].dump() << std::endl;
             }
         }
 
-        // DIAGNOSTIC 2: Voir la table de routage calculée
         std::cout << "DEBUG: Computed routing table:" << std::endl;
         for (const auto &[dest, nextHop] : newRoutingTable.table)
         {
             std::cout << "  " << dest << " -> " << nextHop << std::endl;
         }
 
-        // DIAGNOSTIC 3: Comparer avec la table précédente
-        std::cout << "DEBUG: Last routing table size: " << lastRoutingTable.size() << std::endl;
-        std::cout << "DEBUG: New routing table size: " << newRoutingTable.table.size() << std::endl;
         bool routingTableChanged = firstRun; // Force au premier run
 
         if (!firstRun)
@@ -302,17 +297,11 @@ void RoutingDaemon::mainLoop()
             // Debug pour voir ce qui se passe
             if (firstRun)
             {
-                std::cout << "DEBUG: First run - applying " << newRoutingTable.table.size() << " initial routes" << std::endl;
                 firstRun = false; // ← IMPORTANT : Marquer la fin du premier run
-            }
-            else
-            {
-                std::cout << "DEBUG: Routing table changed - updating routes" << std::endl;
             }
 
             for (const auto &[dest, nextHop] : newRoutingTable.table)
             {
-                std::cout << "DEBUG: Processing route: " << dest << " -> " << nextHop << std::endl;
 
                 if (nextHop == "local" || nextHop == hostname)
                 {
