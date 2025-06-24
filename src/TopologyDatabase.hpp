@@ -45,7 +45,9 @@ public:
         {
             if (lsa.contains("neighbors") && lsa.contains("link_capacities") && lsa.contains("link_states"))
             {
+                std::cout << "DEBUG: Building graph for " << hostname << std::endl;
                 const auto &neighbors = lsa["neighbors"];
+                std::cout << "DEBUG: Neighbors: " << neighbors.dump() << std::endl;
                 const auto &capacities = lsa["link_capacities"];
                 const auto &states = lsa["link_states"];
 
