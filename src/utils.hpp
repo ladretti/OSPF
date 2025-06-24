@@ -49,7 +49,7 @@ inline void addRoute(const std::string &network, const std::string &via, const s
 {
     std::string cmd = "ip route replace " + network + " via " + via + " dev " + iface;
     std::cout << cmd << std::endl;
-    // std::system(cmd.c_str());
+    std::system(cmd.c_str());
 }
 
 inline std::vector<std::pair<std::string, std::string>> getLocalIpInterfaceMapping()
