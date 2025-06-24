@@ -65,21 +65,6 @@ int main(int argc, char *argv[])
 
         std::set<std::string> uniqueNeighbors(activeNeighborHostnames.begin(), activeNeighborHostnames.end());
         std::vector<std::string> neighbors(uniqueNeighbors.begin(), uniqueNeighbors.end());
-        std::cout << "Voisins actifs et leurs interfaces :" << std::endl;
-        for (const auto &neighborHostname : neighbors)
-        {
-            auto lsaIt = topoDb.lsaMap.find(neighborHostname);
-            if (lsaIt != topoDb.lsaMap.end() && lsaIt->second.contains("network_interfaces"))
-            {
-                std::cout << "  " << neighborHostname << " : ";
-                for (const auto &ni : lsaIt->second["network_interfaces"])
-                {
-                    std::cout << ni["interface_name"].get<std::string>() << "("
-                              << ni["interface_ip"].get<std::string>() << ") ";
-                }
-                std::cout << std::endl;
-            }
-        }
 
         for (const auto &neighbor : activeNeighbors)
         {
@@ -133,9 +118,9 @@ int main(int argc, char *argv[])
 
         for (const auto &neighbor : lsm.getActiveNeighbors())
         {
-            // std::cout << neighbor << " ";
+            std::cout << neighbor << " ";
         }
-        // std::cout << std::endl;
+        std::cout << std::endl;
 
         auto routingTable = topoDb.computeRoutingTable(hostname);
 
@@ -172,6 +157,7 @@ int main(int argc, char *argv[])
                         if (localNet == nhNet)
                         {
                             nextHopIp = nhIp.get<std::string>();
+                            // Associe le nom d'interface à l'IP locale trouvée
                             auto it = std::find(interfaces.begin(), interfaces.end(), localIp);
                             if (it != interfaces.end())
                             {
@@ -187,7 +173,7 @@ int main(int argc, char *argv[])
             }
             if (!nextHopIp.empty() && !iface.empty())
             {
-                // addRoute(dest, nextHopIp, iface);
+                addRoute(dest, nextHopIp, iface);
             }
         }
 
