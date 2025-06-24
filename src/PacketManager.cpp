@@ -10,8 +10,9 @@
 #include "LinkStateManager.hpp"
 #include <fcntl.h>
 #include <atomic>
-#include <bits/this_thread_sleep.h>
+#include <zlib.h>
 #include "utils.hpp"
+#include <bits/this_thread_sleep.h>
 
 using json = nlohmann::json;
 
@@ -343,4 +344,215 @@ void PacketManager::sendNeighborResponse(const std::string &destIp, int port, co
         perror("sendto");
     }
     close(sock);
+}
+
+void PacketManager::sendOptimizedLSA(const std::string &destIp, int port, 
+                                    const nlohmann::json& currentLSA, const std::string& hostname)
+{
+    // Calculer le hash du LSA actuel
+    std::string currentData = currentLSA.dump();
+    std::string currentHash = computeHMAC(currentData, "lsa_optimization_key");
+    
+    auto hashIt = lastSentLSAHash.find(destIp);
+    bool shouldSendFull = (hashIt == lastSentLSAHash.end() || hashIt->second != currentHash);
+    
+    if (!shouldSendFull) {
+        // LSA identique, pas d'envoi nécessaire
+        return;
+    }
+    
+    json messageToSend;
+    auto lsaIt = lastSentLSA.find(destIp);
+    
+    if (lsaIt != lastSentLSA.end()) {
+        // Créer un LSA différentiel
+        json diffLSA = createDifferentialLSA(lsaIt->second, currentLSA, hostname);
+        
+        // Vérifier si le différentiel est plus petit que le LSA complet
+        std::string diffStr = diffLSA.dump();
+        std::string fullStr = currentLSA.dump();
+        
+        if (diffStr.size() < fullStr.size() * 0.7) { // 30% d'économie minimum
+            messageToSend = diffLSA;
+            stats.differentialMessages++;
+        } else {
+            messageToSend = currentLSA;
+            messageToSend["type"] = "LSA_FULL_COMPRESSED";
+            stats.fullMessages++;
+        }
+    } else {
+        // Premier envoi, envoyer LSA complet
+        messageToSend = currentLSA;
+        messageToSend["type"] = "LSA_FULL_COMPRESSED";
+        stats.fullMessages++;
+    }
+    
+    // Compression des données si elles sont importantes
+    std::string jsonStr = messageToSend.dump();
+    if (jsonStr.size() > 500) { // Comprimer si > 500 bytes
+        std::string compressed = compressData(jsonStr);
+        if (compressed.size() < jsonStr.size() * 0.8) { // 20% d'économie minimum
+            messageToSend = json{
+                {"type", "LSA_COMPRESSED"},
+                {"compressed_data", compressed},
+                {"hostname", hostname}
+            };
+            stats.compressedMessages++;
+        }
+    }
+    
+    // Envoyer le message optimisé
+    sendLSA(destIp, port, messageToSend);
+    
+    // Mettre à jour le cache
+    lastSentLSAHash[destIp] = currentHash;
+    lastSentLSA[destIp] = currentLSA;
+    stats.totalBytesSent += messageToSend.dump().size();
+}
+
+json PacketManager::createDifferentialLSA(const json& oldLSA, const json& newLSA, 
+                                         const std::string& hostname)
+{
+    json diffLSA = {
+        {"type", "LSA_DIFFERENTIAL"},
+        {"hostname", hostname},
+        {"sequence", newLSA.value("sequence", 1)},
+        {"timestamp", std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count()},
+        {"changes", json::object()}
+    };
+    
+    // Comparer les voisins
+    if (oldLSA.contains("neighbors") && newLSA.contains("neighbors")) {
+        if (oldLSA["neighbors"] != newLSA["neighbors"]) {
+            // Calculer les ajouts et suppressions
+            auto oldNeighbors = oldLSA["neighbors"];
+            auto newNeighbors = newLSA["neighbors"];
+            
+            json added = json::array();
+            json removed = json::array();
+            
+            // Trouver les nouveaux voisins
+            for (const auto& neighbor : newNeighbors) {
+                bool found = false;
+                for (const auto& oldN : oldNeighbors) {
+                    if (neighbor == oldN) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) added.push_back(neighbor);
+            }
+            
+            // Trouver les voisins supprimés
+            for (const auto& oldN : oldNeighbors) {
+                bool found = false;
+                for (const auto& neighbor : newNeighbors) {
+                    if (neighbor == oldN) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) removed.push_back(oldN);
+            }
+            
+            if (!added.empty() || !removed.empty()) {
+                diffLSA["changes"]["neighbors"] = {
+                    {"added", added},
+                    {"removed", removed}
+                };
+            }
+        }
+    } else if (newLSA.contains("neighbors")) {
+        diffLSA["changes"]["neighbors"] = {
+            {"added", newLSA["neighbors"]},
+            {"removed", json::array()}
+        };
+    }
+    
+    // Comparer les interfaces
+    if (oldLSA.contains("interfaces") && newLSA.contains("interfaces")) {
+        if (oldLSA["interfaces"] != newLSA["interfaces"]) {
+            diffLSA["changes"]["interfaces"] = newLSA["interfaces"];
+        }
+    } else if (newLSA.contains("interfaces")) {
+        diffLSA["changes"]["interfaces"] = newLSA["interfaces"];
+    }
+    
+    // Comparer les capacités de liens
+    if (oldLSA.contains("link_capacities") && newLSA.contains("link_capacities")) {
+        if (oldLSA["link_capacities"] != newLSA["link_capacities"]) {
+            diffLSA["changes"]["link_capacities"] = newLSA["link_capacities"];
+        }
+    } else if (newLSA.contains("link_capacities")) {
+        diffLSA["changes"]["link_capacities"] = newLSA["link_capacities"];
+    }
+    
+    return diffLSA;
+}
+
+std::string PacketManager::compressData(const std::string& data)
+{
+    uLongf compressedSize = compressBound(data.size());
+    std::vector<Bytef> compressed(compressedSize);
+    
+    int result = compress(compressed.data(), &compressedSize,
+                         reinterpret_cast<const Bytef*>(data.c_str()), data.size());
+    
+    if (result == Z_OK) {
+        compressed.resize(compressedSize);
+        // Encoder en base64 pour transmission JSON
+        return toHex(std::string(compressed.begin(), compressed.end()));
+    }
+    
+    return data; // Retourner non-compressé en cas d'erreur
+}
+
+std::string PacketManager::decompressData(const std::string& compressedHex)
+{
+    std::vector<Bytef> compressed;
+    for (size_t i = 0; i < compressedHex.length(); i += 2) {
+        unsigned int byte;
+        std::istringstream(compressedHex.substr(i, 2)) >> std::hex >> byte;
+        compressed.push_back(static_cast<Bytef>(byte));
+    }
+    
+    uLongf decompressedSize = compressed.size() * 4; // Estimation
+    std::vector<Bytef> decompressed(decompressedSize);
+    
+    int result = uncompress(decompressed.data(), &decompressedSize,
+                           compressed.data(), compressed.size());
+    
+    if (result == Z_OK) {
+        decompressed.resize(decompressedSize);
+        return std::string(decompressed.begin(), decompressed.end());
+    }
+    
+    return ""; // Erreur de décompression
+}
+
+bool PacketManager::shouldSendHello(const std::string& neighborIp, int adaptiveInterval)
+{
+    auto now = std::chrono::steady_clock::now();
+    auto it = lastHelloSent.find(neighborIp);
+    
+    if (it == lastHelloSent.end()) {
+        lastHelloSent[neighborIp] = now;
+        return true; // Premier Hello
+    }
+    
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - it->second).count();
+    if (elapsed >= adaptiveInterval) {
+        lastHelloSent[neighborIp] = now;
+        return true;
+    }
+    
+    return false;
+}
+
+void PacketManager::resetOptimizationCache()
+{
+    lastSentLSAHash.clear();
+    lastSentLSA.clear();
+    lastHelloSent.clear();
 }

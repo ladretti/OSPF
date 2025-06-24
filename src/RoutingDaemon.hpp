@@ -25,6 +25,9 @@ public:
     void requestNeighborsFrom(const std::string &targetIp) const;
     void showRoutingMetrics() const;
     void showRoutingTable() const;
+    void showTrafficOptimizationStats() const;
+    int getAdaptiveSleepTime() const;
+    void resetOptimizationStats();
 
 private:
     void runDaemon();

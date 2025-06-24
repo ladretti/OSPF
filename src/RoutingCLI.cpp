@@ -189,6 +189,25 @@ void RoutingCLI::handleCommand(const std::string &command)
             std::cout << "Example: request 192.168.1.1" << std::endl;
         }
     }
+    else if (cmd == "traffic" || cmd == "optimization")
+    {
+        if (!daemon->isRunning())
+        {
+            std::cout << "Daemon must be running to show traffic statistics" << std::endl;
+            return;
+        }
+        daemon->showTrafficOptimizationStats();
+    }
+    else if (cmd == "reset")
+    {
+        if (!daemon->isRunning())
+        {
+            std::cout << "Daemon must be running to reset optimization stats" << std::endl;
+            return;
+        }
+        daemon->resetOptimizationStats();
+        std::cout << "Traffic optimization statistics reset" << std::endl;
+    }
     else
     {
         std::cout << "Unknown command: " << cmd << std::endl;
@@ -205,6 +224,7 @@ void RoutingCLI::printHelp()
     std::cout << "  neighbors   - List active neighbor routers" << std::endl;
     std::cout << "  routes/table - Show current routing table" << std::endl;
     std::cout << "  metrics     - Show routing metrics" << std::endl;
+    std::cout << "  traffic     - Show traffic optimization statistics" << std::endl;
     std::cout << "  request <ip> - Request neighbor list from specific router" << std::endl;
     std::cout << "  ping <ip>   - Ping a specific IP address" << std::endl;
     std::cout << "  ping <ip> <count> - Ping with custom packet count" << std::endl;
