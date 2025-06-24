@@ -247,11 +247,12 @@ void RoutingDaemon::mainLoop()
         topoDb->updateLSA(currentLSA);
 
         // 6. Recalculer les routes seulement si nécessaire (triggered updates)
+        // 6. Recalculer les routes seulement si nécessaire (triggered updates)
         static std::map<std::string, std::string> lastRoutingTable;
-        static bool firstRun = true; // ← Ajouter cette ligne
+        static bool firstRun = true;
 
         auto newRoutingTable = topoDb->computeRoutingTable(hostname);
-        bool routingTableChanged = false;
+        bool routingTableChanged = firstRun; // Force au premier run
 
         if (!firstRun)
         {
@@ -277,13 +278,31 @@ void RoutingDaemon::mainLoop()
         // 7. Appliquer les routes seulement si elles ont changé
         if (routingTableChanged)
         {
+            // Debug pour voir ce qui se passe
+            if (firstRun)
+            {
+                std::cout << "DEBUG: First run - applying " << newRoutingTable.table.size() << " initial routes" << std::endl;
+                firstRun = false; // ← IMPORTANT : Marquer la fin du premier run
+            }
+            else
+            {
+                std::cout << "DEBUG: Routing table changed - updating routes" << std::endl;
+            }
 
             for (const auto &[dest, nextHop] : newRoutingTable.table)
             {
+                std::cout << "DEBUG: Processing route: " << dest << " -> " << nextHop << std::endl;
+
                 if (nextHop == "local" || nextHop == hostname)
+                {
+                    std::cout << "DEBUG: Skipping local route" << std::endl;
                     continue;
+                }
                 if (dest.find('/') == std::string::npos)
+                {
+                    std::cout << "DEBUG: Skipping route without CIDR" << std::endl;
                     continue;
+                }
 
                 std::string nextHopIp = "";
                 std::string iface = "";
@@ -291,6 +310,7 @@ void RoutingDaemon::mainLoop()
                 auto lsaIt = topoDb->lsaMap.find(nextHop);
                 if (lsaIt != topoDb->lsaMap.end() && lsaIt->second.contains("interfaces"))
                 {
+                    // ...existing code pour résoudre nextHopIp et iface...
                     const auto &nextHopIfaces = lsaIt->second["interfaces"];
                     for (size_t i = 0; i < interfaces.size(); ++i)
                     {
@@ -325,28 +345,35 @@ void RoutingDaemon::mainLoop()
                             break;
                     }
                 }
+
                 if (!nextHopIp.empty() && !iface.empty())
                 {
+                    std::cout << "DEBUG: Adding route: " << dest << " via " << nextHopIp << " dev " << iface << std::endl;
                     addRoute(dest, nextHopIp, iface);
+                }
+                else
+                {
+                    std::cout << "DEBUG: Cannot resolve nextHopIp or interface for " << dest << std::endl;
                 }
             }
 
             // Sauvegarder la nouvelle table de routage
             lastRoutingTable = std::map<std::string, std::string>(newRoutingTable.table.begin(), newRoutingTable.table.end());
         }
-
-        // 8. Sleep adaptatif basé sur la stabilité du réseau
-        int sleepTime = getAdaptiveSleepTime();
-
-        // Calculer le temps déjà écoulé dans cette boucle
-        auto loopEnd = std::chrono::steady_clock::now();
-        auto loopDuration = std::chrono::duration_cast<std::chrono::milliseconds>(loopEnd - loopStart).count();
-
-        // Ajuster le sleep pour maintenir un timing cohérent
-        int remainingSleep = std::max(1000, sleepTime - static_cast<int>(loopDuration)); // Minimum 1s
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(remainingSleep));
     }
+
+    // 8. Sleep adaptatif basé sur la stabilité du réseau
+    int sleepTime = getAdaptiveSleepTime();
+
+    // Calculer le temps déjà écoulé dans cette boucle
+    auto loopEnd = std::chrono::steady_clock::now();
+    auto loopDuration = std::chrono::duration_cast<std::chrono::milliseconds>(loopEnd - loopStart).count();
+
+    // Ajuster le sleep pour maintenir un timing cohérent
+    int remainingSleep = std::max(1000, sleepTime - static_cast<int>(loopDuration)); // Minimum 1s
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(remainingSleep));
+}
 }
 
 void RoutingDaemon::requestNeighborsFrom(const std::string &targetIp) const
