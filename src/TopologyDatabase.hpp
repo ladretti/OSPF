@@ -148,9 +148,6 @@ public:
                             hop = prev[hop];
                         }
                         rt.table[net] = hop; // Route vers le RÉSEAU avec next-hop
-
-                        std::cout << "DEBUG: Added network route: " << net
-                                  << " -> " << hop << " (distance: " << dist.at(hostname) << ")" << std::endl;
                     }
                 }
             }

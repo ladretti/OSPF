@@ -106,7 +106,6 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
             try
             {
                 json j = json::parse(buffer);
-                std::cout << "DEBUG: Received packet type: " << j.value("type", "unknown") << std::endl;
 
                 if (j.contains("hmac"))
                 {
@@ -145,9 +144,6 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     char senderIp[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
 
-                    std::cout << "DEBUG: Received LSA from " << senderIp << std::endl;
-                    std::cout << "DEBUG: LSA sender hostname: " << j.value("hostname", "unknown") << std::endl;
-                    std::cout << "DEBUG: LSA sequence: " << j.value("sequence_number", -1) << std::endl;
 
                     // Gérer les différents types
                     json lsaToProcess = j;
@@ -177,11 +173,9 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                     }
 
                     bool updated = topoDb.updateLSA(lsaToProcess);
-                    std::cout << "DEBUG: LSA updated in database: " << updated << std::endl;
 
                     if (updated)
                     {
-                        std::cout << "DEBUG: LSA database now has " << topoDb.lsaMap.size() << " entries" << std::endl;
 
                         // RELAY TO ALL ACTIVE NEIGHBORS (except sender)
                         auto neighbors = lsm.getActiveNeighbors();

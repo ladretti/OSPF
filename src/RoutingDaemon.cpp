@@ -252,7 +252,6 @@ void RoutingDaemon::mainLoop()
         static bool firstRun = true;
 
         auto newRoutingTable = topoDb->computeRoutingTable(hostname);
-        std::cout << "DEBUG: LSA Database contains " << topoDb->lsaMap.size() << " entries:" << std::endl;
         for (const auto &[routerName, lsa] : topoDb->lsaMap)
         {
             std::cout << "  - " << routerName << std::endl;
@@ -262,7 +261,6 @@ void RoutingDaemon::mainLoop()
             }
         }
 
-        std::cout << "DEBUG: Computed routing table:" << std::endl;
         for (const auto &[dest, nextHop] : newRoutingTable.table)
         {
             std::cout << "  " << dest << " -> " << nextHop << std::endl;
@@ -294,7 +292,6 @@ void RoutingDaemon::mainLoop()
         // 7. Appliquer les routes seulement si elles ont changé
         if (routingTableChanged)
         {
-            // Debug pour voir ce qui se passe
             if (firstRun)
             {
                 firstRun = false; // ← IMPORTANT : Marquer la fin du premier run
@@ -305,12 +302,10 @@ void RoutingDaemon::mainLoop()
 
                 if (nextHop == "local" || nextHop == hostname)
                 {
-                    std::cout << "DEBUG: Skipping local route" << std::endl;
                     continue;
                 }
                 if (dest.find('/') == std::string::npos)
                 {
-                    std::cout << "DEBUG: Skipping route without CIDR" << std::endl;
                     continue;
                 }
 
@@ -358,12 +353,10 @@ void RoutingDaemon::mainLoop()
 
                 if (!nextHopIp.empty() && !iface.empty())
                 {
-                    std::cout << "DEBUG: Adding route: " << dest << " via " << nextHopIp << " dev " << iface << std::endl;
                     addRoute(dest, nextHopIp, iface);
                 }
                 else
                 {
-                    std::cout << "DEBUG: Cannot resolve nextHopIp or interface for " << dest << std::endl;
                 }
             }
 
