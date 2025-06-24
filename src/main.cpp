@@ -132,9 +132,9 @@ int main(int argc, char *argv[])
 
         for (const auto &neighbor : lsm.getActiveNeighbors())
         {
-            std::cout << neighbor << " ";
+            // std::cout << neighbor << " ";
         }
-        std::cout << std::endl;
+        // std::cout << std::endl;
 
         auto routingTable = topoDb.computeRoutingTable(hostname);
 
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
             }
             if (!nextHopIp.empty() && !iface.empty())
             {
-                addRoute(dest, nextHopIp, iface);
+                // addRoute(dest, nextHopIp, iface);
             }
         }
 
