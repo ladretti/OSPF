@@ -41,22 +41,6 @@ public:
         // Graphe: hostname -> voisins (vector<string>)
         std::unordered_map<std::string, std::vector<LinkInfo>> weightedGraph;
 
-        std::cout << "DEBUG: computeRoutingTable called for " << selfHostname << std::endl;
-        std::cout << "DEBUG: LSA database size: " << lsaMap.size() << std::endl;
-
-        for (const auto &[host, lsa] : lsaMap)
-        {
-            std::cout << "DEBUG: LSA for " << host << std::endl;
-            if (lsa.contains("networks"))
-            {
-                std::cout << "DEBUG: Networks: " << lsa["networks"].dump() << std::endl;
-            }
-            if (lsa.contains("neighbors"))
-            {
-                std::cout << "DEBUG: Neighbors: " << lsa["neighbors"].dump() << std::endl;
-            }
-        }
-
         for (const auto &[hostname, lsa] : lsaMap)
         {
             if (lsa.contains("neighbors") && lsa.contains("link_capacities") && lsa.contains("link_states"))
