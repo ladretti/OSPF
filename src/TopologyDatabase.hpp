@@ -117,19 +117,19 @@ public:
         }
 
         RoutingTable rt;
-        for (const auto &[dest, distance] : dist)
-        {
-            if (dest == selfHostname || distance == std::numeric_limits<double>::infinity())
-                continue;
+        // for (const auto &[dest, distance] : dist)
+        // {
+        //     if (dest == selfHostname || distance == std::numeric_limits<double>::infinity())
+        //         continue;
 
-            // Trouver le next hop
-            std::string hop = dest;
-            while (prev.count(hop) && prev[hop] != selfHostname)
-            {
-                hop = prev[hop];
-            }
-            rt.table[dest] = hop;
-        }
+        //     // Trouver le next hop
+        //     std::string hop = dest;
+        //     while (prev.count(hop) && prev[hop] != selfHostname)
+        //     {
+        //         hop = prev[hop];
+        //     }
+        //     rt.table[dest] = hop;
+        // }
         for (const auto &[hostname, lsa] : lsaMap)
         {
             if (lsa.contains("networks"))
@@ -138,9 +138,19 @@ public:
                 {
                     if (localNetworks.count(net) || hostname == selfHostname)
                         continue;
-                    if (rt.table.count(hostname))
+
+                    // Calculer le next-hop pour ce réseau via Dijkstra
+                    if (dist.count(hostname) && dist.at(hostname) != std::numeric_limits<double>::infinity())
                     {
-                        rt.table[net] = rt.table[hostname];
+                        std::string hop = hostname;
+                        while (prev.count(hop) && prev[hop] != selfHostname)
+                        {
+                            hop = prev[hop];
+                        }
+                        rt.table[net] = hop; // Route vers le RÉSEAU avec next-hop
+
+                        std::cout << "DEBUG: Added network route: " << net
+                                  << " -> " << hop << " (distance: " << dist.at(hostname) << ")" << std::endl;
                     }
                 }
             }
