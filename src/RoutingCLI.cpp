@@ -109,19 +109,6 @@ void RoutingCLI::handleCommand(const std::string &command)
 
             daemon->showPingResults(target, count);
         }
-        else if (cmd == "request")
-        {
-            std::string targetIp;
-            if (iss >> targetIp)
-            {
-                daemon->requestNeighborsFrom(targetIp);
-            }
-            else
-            {
-                std::cout << "Usage: request <target_ip>" << std::endl;
-                std::cout << "Example: request 192.168.1.1" << std::endl;
-            }
-        }
         else
         {
             std::cout << "Usage: ping <target> [count]" << std::endl;
@@ -163,6 +150,19 @@ void RoutingCLI::handleCommand(const std::string &command)
             std::cout << "  - " << neighbor << std::endl;
         }
     }
+    else if (cmd == "request")
+        {
+            std::string targetIp;
+            if (iss >> targetIp)
+            {
+                daemon->requestNeighborsFrom(targetIp);
+            }
+            else
+            {
+                std::cout << "Usage: request <target_ip>" << std::endl;
+                std::cout << "Example: request 192.168.1.1" << std::endl;
+            }
+        }
     else
     {
         std::cout << "Unknown command: " << cmd << std::endl;
