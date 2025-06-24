@@ -252,6 +252,27 @@ void RoutingDaemon::mainLoop()
         static bool firstRun = true;
 
         auto newRoutingTable = topoDb->computeRoutingTable(hostname);
+
+        td::cout << "DEBUG: LSA Database contains " << topoDb->lsaMap.size() << " entries:" << std::endl;
+        for (const auto &[host, lsa] : topoDb->lsaMap)
+        {
+            std::cout << "  - " << host << std::endl;
+            if (lsa.contains("networks"))
+            {
+                std::cout << "    Networks: " << lsa["networks"].dump() << std::endl;
+            }
+        }
+
+        // DIAGNOSTIC 2: Voir la table de routage calculée
+        std::cout << "DEBUG: Computed routing table:" << std::endl;
+        for (const auto &[dest, nextHop] : newRoutingTable.table)
+        {
+            std::cout << "  " << dest << " -> " << nextHop << std::endl;
+        }
+
+        // DIAGNOSTIC 3: Comparer avec la table précédente
+        std::cout << "DEBUG: Last routing table size: " << lastRoutingTable.size() << std::endl;
+        std::cout << "DEBUG: New routing table size: " << newRoutingTable.table.size() << std::endl;
         bool routingTableChanged = firstRun; // Force au premier run
 
         if (!firstRun)
