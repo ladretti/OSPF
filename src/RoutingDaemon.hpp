@@ -39,4 +39,7 @@ private:
     std::atomic<bool> running;
     std::thread daemonThread;
     std::thread receiverThread;
+
+    std::vector<double> getLinkCapabilities() const;
+    std::vector<bool> getLinkStates() const;
 };

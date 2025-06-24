@@ -123,8 +123,10 @@ std::vector<std::string> RoutingDaemon::getActiveNeighbors() const
     return lsm->getActiveNeighbors();
 }
 
-std::vector<std::string> RoutingDaemon::getActiveNeighborHostnames() const {
-    if (!lsm) return {};
+std::vector<std::string> RoutingDaemon::getActiveNeighborHostnames() const
+{
+    if (!lsm)
+        return {};
     return lsm->getActiveNeighborHostnames();
 }
 
@@ -210,7 +212,9 @@ void RoutingDaemon::mainLoop()
             {"interfaces", interfaces},
             {"neighbors", neighbors},
             {"networks", networks},
-            {"network_interfaces", networkInterfaces}};
+            {"network_interfaces", networkInterfaces},
+            {"link_capacities", getLinkCapabilities()},
+            {"link_states", getLinkStates()}};
 
         std::string lsaStr = lsa.dump();
 
@@ -280,14 +284,48 @@ void RoutingDaemon::mainLoop()
     }
 }
 
-void RoutingDaemon::requestNeighborsFrom(const std::string& targetIp) const
+void RoutingDaemon::requestNeighborsFrom(const std::string &targetIp) const
 {
     if (!running.load())
     {
         std::cout << "Daemon must be running to request neighbors" << std::endl;
         return;
     }
-    
+
     std::cout << "Requesting neighbor list from " << targetIp << "..." << std::endl;
     pm->sendNeighborRequest(targetIp, port, hostname);
+}
+
+std::vector<double> RoutingDaemon::getLinkCapabilities() const
+{
+    std::vector<double> capacities;
+    auto activeNeighbors = lsm->getActiveNeighbors();
+
+    for (const auto &neighbor : activeNeighbors)
+    {
+        // Déterminer la capacité basée sur le type d'interface
+        // Exemple : Ethernet = 1000 Mbps, WiFi = 100 Mbps, etc.
+        double capacity = 1000.0; // Valeur par défaut
+
+        // Ici vous pourriez implémenter une logique plus sophistiquée
+        // basée sur les interfaces réseau réelles
+        capacities.push_back(capacity);
+    }
+
+    return capacities;
+}
+
+std::vector<bool> RoutingDaemon::getLinkStates() const
+{
+    std::vector<bool> states;
+    auto activeNeighbors = lsm->getActiveNeighbors();
+
+    for (const auto &neighbor : activeNeighbors)
+    {
+        // Tous les voisins actifs ont des liens actifs par définition
+        // Vous pourriez ajouter une logique plus complexe ici
+        states.push_back(true);
+    }
+
+    return states;
 }

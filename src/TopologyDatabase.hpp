@@ -28,49 +28,84 @@ public:
         return false;
     }
 
+    struct LinkInfo
+    {
+        std::string neighbor;
+        double capacity;
+        bool isActive;
+        double weight;
+    };
+
     RoutingTable computeRoutingTable(const std::string &selfHostname) const
     {
         // Graphe: hostname -> voisins (vector<string>)
-        std::unordered_map<std::string, std::vector<std::string>> graph;
+        std::unordered_map<std::string, std::vector<LinkInfo>> weightedGraph;
+
         for (const auto &[hostname, lsa] : lsaMap)
         {
-            if (lsa.contains("neighbors"))
+            if (lsa.contains("neighbors") && lsa.contains("link_capacities") && lsa.contains("link_states"))
             {
-                for (const auto &neighbor : lsa["neighbors"])
+                const auto &neighbors = lsa["neighbors"];
+                const auto &capacities = lsa["link_capacities"];
+                const auto &states = lsa["link_states"];
+
+                for (size_t i = 0; i < neighbors.size(); ++i)
                 {
-                    graph[hostname].push_back(neighbor);
+                    if (i < capacities.size() && i < states.size())
+                    {
+                        LinkInfo link;
+                        link.neighbor = neighbors[i];
+                        link.capacity = capacities[i].get<double>();
+                        link.isActive = states[i].get<bool>();
+
+                        // Ignorer les liens inactifs
+                        if (!link.isActive)
+                            continue;
+
+                        // Calculer le poids : inverse de la capacité + pénalité pour faible capacité
+                        link.weight = (1.0 / link.capacity) * 1000; // Normaliser
+
+                        weightedGraph[hostname].push_back(link);
+                    }
                 }
             }
         }
 
         // Dijkstra (BFS simplifié, coût 1 par lien)
-        std::unordered_map<std::string, int> dist;
+        std::unordered_map<std::string, double> dist;
         std::unordered_map<std::string, std::string> prev;
-        std::set<std::string> visited;
-        std::queue<std::string> q;
+        std::priority_queue<std::pair<double, std::string>, std::vector<std::pair<double, std::string>>, std::greater<>> pq;
 
-        dist[selfHostname] = 0;
-        q.push(selfHostname);
-
-        while (!q.empty())
+        for (const auto &[hostname, _] : lsaMap)
         {
-            std::string u = q.front();
-            q.pop();
-            visited.insert(u);
+            dist[hostname] = std::numeric_limits<double>::infinity();
+        }
+        dist[selfHostname] = 0.0;
+        pq.push({0.0, selfHostname});
 
-            for (const auto &v : graph[u])
+        while (!pq.empty())
+        {
+            auto [currentDist, u] = pq.top();
+            pq.pop();
+
+            if (currentDist > dist[u])
+                continue;
+
+            for (const auto &link : weightedGraph[u])
             {
-                if (!visited.count(v))
+                const std::string &v = link.neighbor;
+                double weight = link.weight;
+                double newDist = dist[u] + weight;
+
+                if (newDist < dist[v])
                 {
-                    if (!dist.count(v) || dist[v] > dist[u] + 1)
-                    {
-                        dist[v] = dist[u] + 1;
-                        prev[v] = u;
-                        q.push(v);
-                    }
+                    dist[v] = newDist;
+                    prev[v] = u;
+                    pq.push({newDist, v});
                 }
             }
         }
+
         std::set<std::string> localNetworks;
         auto it = lsaMap.find(selfHostname);
         if (it != lsaMap.end() && it->second.contains("networks"))
@@ -82,13 +117,14 @@ public:
         }
 
         RoutingTable rt;
-        for (const auto &[dest, _] : dist)
+        for (const auto &[dest, distance] : dist)
         {
-            if (dest == selfHostname)
+            if (dest == selfHostname || distance == std::numeric_limits<double>::infinity())
                 continue;
-            // remonte le chemin pour trouver le next hop
+
+            // Trouver le next hop
             std::string hop = dest;
-            while (prev[hop] != selfHostname)
+            while (prev.count(hop) && prev[hop] != selfHostname)
             {
                 hop = prev[hop];
             }
@@ -100,9 +136,7 @@ public:
             {
                 for (const auto &net : lsa["networks"])
                 {
-                    if (localNetworks.count(net))
-                        continue;
-                    if (hostname == selfHostname)
+                    if (localNetworks.count(net) || hostname == selfHostname)
                         continue;
                     if (rt.table.count(hostname))
                     {
@@ -111,7 +145,7 @@ public:
                 }
             }
         }
+
         return rt;
     }
-
 };
