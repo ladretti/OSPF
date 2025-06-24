@@ -22,7 +22,7 @@ std::string calculateBroadcastAddress(const std::string &ip)
 
 int main(int argc, char *argv[])
 {
-    std::string routerId = "R_1";
+    std::string routerId = "R";
 
     TopologyDatabase topoDb;
 
