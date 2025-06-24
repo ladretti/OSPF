@@ -31,7 +31,6 @@ int main(int argc, char *argv[])
         routerId = argv[1];
     }
 
-
     const std::string configFile = "config/router.conf";
     RouterConfig config = getRouterConfig(routerId, configFile);
 
@@ -45,14 +44,12 @@ int main(int argc, char *argv[])
     std::vector<std::string> interfaces = config.interfaces;
     int port = config.port;
 
-
     LinkStateManager lsm;
     PacketManager pm;
 
     std::atomic<bool> running = true;
     std::thread receiverThread([&pm, &lsm, &running, port, hostname, &topoDb]()
-                               {
-        pm.receivePackets(port, lsm, running, hostname, topoDb); });
+                               { pm.receivePackets(port, lsm, running, hostname, topoDb); });
 
     while (true)
     {
@@ -146,27 +143,30 @@ int main(int argc, char *argv[])
             }
 
             std::string iface = interfaces[0];
-            for (const auto &lsaPair : topoDb.lsaMap)
+            for (size_t i = 0; i < interfaces.size(); ++i)
             {
-                if (lsaPair.first == nextHop && lsaPair.second.contains("network_interfaces"))
+                const auto &localIface = interfaces[i];
+                size_t lastDot = localIface.find_last_of('.');
+                if (lastDot != std::string::npos)
                 {
-                    for (const auto &localIface : interfaces)
+                    std::string localNet = localIface.substr(0, lastDot + 1) + "0/24";
+                    for (const auto &lsaPair : topoDb.lsaMap)
                     {
-                        size_t lastDot = localIface.find_last_of('.');
-                        if (lastDot != std::string::npos)
+                        if (lsaPair.first == nextHop && lsaPair.second.contains("network_interfaces"))
                         {
-                            std::string localNet = localIface.substr(0, lastDot + 1) + "0/24";
                             for (const auto &ni : lsaPair.second["network_interfaces"])
                             {
                                 if (ni["network"] == localNet)
                                 {
-                                    iface = localIface;
+                                    if (i < config.interfacesNames.size())
+                                    {
+                                        iface = config.interfacesNames[i];
+                                    }
                                     break;
                                 }
                             }
                         }
                     }
-                    break;
                 }
             }
 
