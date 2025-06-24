@@ -271,7 +271,6 @@ void RoutingDaemon::mainLoop()
         // 7. Appliquer les routes seulement si elles ont changé
         if (routingTableChanged)
         {
-            std::cout << "[" << hostname << "] Routing table changed, updating system routes..." << std::endl;
 
             for (const auto &[dest, nextHop] : newRoutingTable.table)
             {
