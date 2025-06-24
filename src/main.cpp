@@ -69,12 +69,13 @@ int main(int argc, char *argv[])
         for (const auto &neighborHostname : neighbors)
         {
             auto lsaIt = topoDb.lsaMap.find(neighborHostname);
-            if (lsaIt != topoDb.lsaMap.end() && lsaIt->second.contains("interfaces"))
+            if (lsaIt != topoDb.lsaMap.end() && lsaIt->second.contains("network_interfaces"))
             {
                 std::cout << "  " << neighborHostname << " : ";
-                for (const auto &ip : lsaIt->second["interfaces"])
+                for (const auto &ni : lsaIt->second["network_interfaces"])
                 {
-                    std::cout << ip.get<std::string>() << " ";
+                    std::cout << ni["interface_name"].get<std::string>() << "("
+                              << ni["interface_ip"].get<std::string>() << ") ";
                 }
                 std::cout << std::endl;
             }
