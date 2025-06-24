@@ -274,3 +274,15 @@ void RoutingDaemon::mainLoop()
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 }
+
+void RoutingDaemon::requestNeighborsFrom(const std::string& targetIp) const
+{
+    if (!running.load())
+    {
+        std::cout << "Daemon must be running to request neighbors" << std::endl;
+        return;
+    }
+    
+    std::cout << "Requesting neighbor list from " << targetIp << "..." << std::endl;
+    pm->sendNeighborRequest(targetIp, port, hostname);
+}

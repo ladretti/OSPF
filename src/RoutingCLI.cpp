@@ -109,6 +109,19 @@ void RoutingCLI::handleCommand(const std::string &command)
 
             daemon->showPingResults(target, count);
         }
+        else if (cmd == "request")
+        {
+            std::string targetIp;
+            if (iss >> targetIp)
+            {
+                daemon->requestNeighborsFrom(targetIp);
+            }
+            else
+            {
+                std::cout << "Usage: request <target_ip>" << std::endl;
+                std::cout << "Example: request 192.168.1.1" << std::endl;
+            }
+        }
         else
         {
             std::cout << "Usage: ping <target> [count]" << std::endl;
@@ -163,6 +176,7 @@ void RoutingCLI::printHelp() {
     std::cout << "  stop        - Stop the routing daemon" << std::endl;
     std::cout << "  status      - Show daemon status and configuration" << std::endl;
     std::cout << "  neighbors   - List active neighbor routers" << std::endl;
+    std::cout << "  request <ip> - Request neighbor list from specific router" << std::endl;
     std::cout << "  ping <ip>   - Ping a specific IP address" << std::endl;
     std::cout << "  ping <ip> <count> - Ping with custom packet count" << std::endl;
     std::cout << "  pingall     - Ping all active neighbors" << std::endl;

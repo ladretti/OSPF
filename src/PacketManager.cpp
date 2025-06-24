@@ -88,7 +88,6 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
         return;
     }
 
-
     char buffer[2048];
     while (running)
     {
@@ -134,14 +133,11 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
 
                     std::string neighborHostname = j.value("hostname", "");
                     lsm.updateNeighbor(senderIp, neighborHostname);
-                    
-                    
                 }
                 if (j.contains("type") && j["type"] == "LSA")
                 {
                     char senderIp[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
-
 
                     bool updated = topoDb.updateLSA(j);
 
@@ -157,6 +153,38 @@ void PacketManager::receivePackets(int port, LinkStateManager &lsm, std::atomic<
                             }
                         }
                     }
+                }
+                if (j.contains("type") && j["type"] == "NEIGHBOR_REQUEST")
+                {
+                    char senderIp[INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET, &sender.sin_addr, senderIp, INET_ADDRSTRLEN);
+
+                    // Récupérer la liste des voisins actifs
+                    auto neighbors = lsm.getActiveNeighborHostnames();
+
+                    // Envoyer la réponse
+                    sendNeighborResponse(senderIp, port, hostname, neighbors);
+                }
+
+                if (j.contains("type") && j["type"] == "NEIGHBOR_RESPONSE")
+                {
+                    std::string senderHostname = j.value("hostname", "unknown");
+                    std::cout << "\n=== Neighbors of " << senderHostname << " ===" << std::endl;
+
+                    if (j.contains("neighbors") && j["neighbors"].is_array())
+                    {
+                        auto neighbors = j["neighbors"];
+                        std::cout << "Active neighbors (" << neighbors.size() << "):" << std::endl;
+                        for (const auto &neighbor : neighbors)
+                        {
+                            std::cout << "  - " << neighbor.get<std::string>() << std::endl;
+                        }
+                    }
+                    else
+                    {
+                        std::cout << "No active neighbors" << std::endl;
+                    }
+                    std::cout << "=========================" << std::endl;
                 }
             }
             catch (...)
@@ -199,6 +227,79 @@ void PacketManager::sendLSA(const std::string &destIp, int port, const json &lsa
     lsaToSend["hmac"] = toHex(hmac);
 
     if (sendto(sock, lsaToSend.dump().c_str(), lsaToSend.dump().length(), 0,
+               (sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        perror("sendto");
+    }
+    close(sock);
+}
+
+void PacketManager::sendNeighborRequest(const std::string &destIp, int port, const std::string &hostname)
+{
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0)
+    {
+        perror("socket");
+        return;
+    }
+
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+
+    if (inet_pton(AF_INET, destIp.c_str(), &addr.sin_addr) <= 0)
+    {
+        std::cerr << "Invalid address: " << destIp << std::endl;
+        close(sock);
+        return;
+    }
+
+    json requestMsg = {
+        {"type", "NEIGHBOR_REQUEST"},
+        {"hostname", hostname}};
+
+    std::string requestStr = requestMsg.dump();
+    std::string hmac = computeHMAC(requestStr, "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
+    requestMsg["hmac"] = toHex(hmac);
+
+    if (sendto(sock, requestMsg.dump().c_str(), requestMsg.dump().length(), 0,
+               (sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        perror("sendto");
+    }
+    close(sock);
+}
+
+void PacketManager::sendNeighborResponse(const std::string &destIp, int port, const std::string &hostname, const std::vector<std::string> &neighbors)
+{
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0)
+    {
+        perror("socket");
+        return;
+    }
+
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+
+    if (inet_pton(AF_INET, destIp.c_str(), &addr.sin_addr) <= 0)
+    {
+        std::cerr << "Invalid address: " << destIp << std::endl;
+        close(sock);
+        return;
+    }
+
+    json responseMsg = {
+        {"type", "NEIGHBOR_RESPONSE"},
+        {"hostname", hostname},
+        {"neighbors", neighbors}};
+
+    std::string responseStr = responseMsg.dump();
+    std::string hmac = computeHMAC(responseStr, "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
+    responseMsg["hmac"] = toHex(hmac);
+
+    if (sendto(sock, responseMsg.dump().c_str(), responseMsg.dump().length(), 0,
                (sockaddr *)&addr, sizeof(addr)) < 0)
     {
         perror("sendto");

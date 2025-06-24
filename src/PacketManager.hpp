@@ -15,5 +15,6 @@ public:
     void receivePackets(int port, LinkStateManager &lsm, std::atomic<bool> &running, const std::string &hostname, TopologyDatabase &topoDb);
 
     void sendLSA(const std::string &destIp, int port, const nlohmann::json& lsaMsg);
-                 
+    void sendNeighborRequest(const std::string &destIp, int port, const std::string &hostname);
+    void sendNeighborResponse(const std::string &destIp, int port, const std::string &hostname, const std::vector<std::string> &neighbors);
 };
