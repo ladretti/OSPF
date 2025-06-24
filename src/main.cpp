@@ -133,44 +133,39 @@ int main(int argc, char *argv[])
                 continue;
 
             std::string nextHopIp = "";
-            for (const auto &lsaPair : topoDb.lsaMap)
-            {
-                if (lsaPair.first == nextHop && lsaPair.second.contains("interfaces"))
-                {
-                    nextHopIp = lsaPair.second["interfaces"][0];
-                    break;
-                }
-            }
+            std::string iface = "";
 
-            std::string iface = interfaces[0];
-            for (size_t i = 0; i < interfaces.size(); ++i)
+            auto lsaIt = topoDb.lsaMap.find(nextHop);
+            if (lsaIt != topoDb.lsaMap.end() && lsaIt->second.contains("interfaces"))
             {
-                const auto &localIface = interfaces[i];
-                size_t lastDot = localIface.find_last_of('.');
-                if (lastDot != std::string::npos)
+                const auto &nextHopIfaces = lsaIt->second["interfaces"];
+                for (size_t i = 0; i < interfaces.size(); ++i)
                 {
-                    std::string localNet = localIface.substr(0, lastDot + 1) + "0/24";
-                    for (const auto &lsaPair : topoDb.lsaMap)
+                    const std::string &localIp = interfaces[i];
+                    size_t lastDot = localIp.find_last_of('.');
+                    if (lastDot == std::string::npos)
+                        continue;
+                    std::string localNet = localIp.substr(0, lastDot + 1);
+
+                    for (const auto &nhIp : nextHopIfaces)
                     {
-                        if (lsaPair.first == nextHop && lsaPair.second.contains("network_interfaces"))
+                        size_t nhLastDot = nhIp.get<std::string>().find_last_of('.');
+                        if (nhLastDot == std::string::npos)
+                            continue;
+                        std::string nhNet = nhIp.get<std::string>().substr(0, nhLastDot + 1);
+
+                        if (localNet == nhNet)
                         {
-                            for (const auto &ni : lsaPair.second["network_interfaces"])
-                            {
-                                if (ni["network"] == localNet)
-                                {
-                                    if (i < config.interfacesNames.size())
-                                    {
-                                        iface = config.interfacesNames[i];
-                                    }
-                                    break;
-                                }
-                            }
+                            nextHopIp = nhIp.get<std::string>();
+                            iface = (i < config.interfacesNames.size()) ? config.interfacesNames[i] : "";
+                            break;
                         }
                     }
+                    if (!nextHopIp.empty())
+                        break;
                 }
             }
-
-            if (!nextHopIp.empty())
+            if (!nextHopIp.empty() && !iface.empty())
             {
                 addRoute(dest, nextHopIp, iface);
             }
