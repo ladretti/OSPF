@@ -319,6 +319,20 @@ void RoutingDaemon::mainLoop()
         {
             pm->sendOptimizedLSA(neighbor, port, currentLSA, hostname);
         }
+        if (neighborsChanged || ipsChanged)
+        {
+            std::cout << "DEBUG " << hostname << " - TRIGGERED FLOODING due to topology change" << std::endl;
+
+            // Diffuser immédiatement tous les LSA connus
+            for (const auto &[lsaHostname, lsa] : topoDb->lsaMap)
+            {
+                for (const auto &neighbor : activeNeighbors)
+                {
+                    pm->sendOptimizedLSA(neighbor, port, lsa, hostname);
+                }
+            }
+        }
+
         static auto lastFloodTime = std::chrono::steady_clock::now();
         auto now = std::chrono::steady_clock::now();
 
