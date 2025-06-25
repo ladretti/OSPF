@@ -27,6 +27,18 @@ public:
             int seq = lsa["sequence_number"];
             if (!lsaMap.count(host) || lsaMap[host]["sequence_number"] < seq)
             {
+                // Debug : afficher les changements LSA
+                if (lsaMap.count(host))
+                {
+                    std::cout << "LSA UPDATE: " << host << " seq "
+                              << lsaMap[host]["sequence_number"].get<int>()
+                              << " -> " << seq << std::endl;
+                }
+                else
+                {
+                    std::cout << "LSA NEW: " << host << " seq " << seq << std::endl;
+                }
+
                 lsaMap[host] = lsa;
                 return true;
             }
@@ -44,6 +56,7 @@ public:
 
     RoutingTable computeRoutingTable(const std::string &selfHostname) const
     {
+        std::lock_guard<std::mutex> lock(lsaMutex);
         // Graphe: hostname -> voisins (vector<string>)
         std::unordered_map<std::string, std::vector<LinkInfo>> weightedGraph;
 
@@ -51,7 +64,6 @@ public:
         {
             if (lsa.contains("neighbors") && lsa.contains("link_capacities") && lsa.contains("link_states"))
             {
-                std::lock_guard<std::mutex> lock(lsaMutex);
 
                 const auto &neighbors = lsa["neighbors"];
                 const auto &capacities = lsa["link_capacities"];
