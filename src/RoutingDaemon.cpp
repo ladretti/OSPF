@@ -319,6 +319,26 @@ void RoutingDaemon::mainLoop()
         {
             pm->sendOptimizedLSA(neighbor, port, currentLSA, hostname);
         }
+        static auto lastFloodTime = std::chrono::steady_clock::now();
+        auto now = std::chrono::steady_clock::now();
+
+        if (now - lastFloodTime > std::chrono::seconds(30)) // Flood toutes les 30 secondes
+        {
+            std::cout << "DEBUG " << hostname << " - Flooding LSA database to neighbors" << std::endl;
+
+            for (const auto &[lsaHostname, lsa] : topoDb->lsaMap)
+            {
+                if (lsaHostname != hostname) // Ne pas re-diffuser son propre LSA
+                {
+                    for (const auto &neighbor : activeNeighbors)
+                    {
+                        pm->sendOptimizedLSA(neighbor, port, lsa, hostname);
+                    }
+                }
+            }
+
+            lastFloodTime = now;
+        }
 
         // Mettre à jour la topologie locale
         topoDb->updateLSA(currentLSA);
