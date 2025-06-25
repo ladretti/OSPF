@@ -34,7 +34,8 @@ std::vector<std::string> LinkStateManager::getActiveNeighborHostnames() const
     auto now = std::chrono::steady_clock::now();
     for (const auto &[ip, info] : neighbors)
     {
-        if (now - info.lastSeen < std::chrono::seconds(10) && !info.hostname.empty())
+        // ✅ UTILISER LE MÊME TIMEOUT que purgeInactiveNeighbors()
+        if (now - info.lastSeen < std::chrono::seconds(45) && !info.hostname.empty())
         {
             hostnames.push_back(info.hostname);
         }
@@ -48,29 +49,29 @@ std::vector<std::string> LinkStateManager::getActiveNeighbors() const
     auto now = std::chrono::steady_clock::now();
     for (const auto &[ip, info] : neighbors)
     {
-        if (now - info.lastSeen < std::chrono::seconds(10))
+        // ✅ UTILISER LE MÊME TIMEOUT que purgeInactiveNeighbors()
+        if (now - info.lastSeen < std::chrono::seconds(45))
         {
             active.push_back(ip);
         }
     }
     return active;
 }
-
 void LinkStateManager::purgeInactiveNeighbors()
 {
     auto now = std::chrono::steady_clock::now();
     auto it = neighbors.begin();
-    
+
     while (it != neighbors.end())
     {
         auto timeSinceLastSeen = std::chrono::duration_cast<std::chrono::seconds>(
             now - it->second.lastSeen);
-        
+
         // TIMEOUT TRÈS GÉNÉREUX : 45 secondes au lieu de 10
         if (timeSinceLastSeen > std::chrono::seconds(45))
         {
-            std::cout << "DEBUG: Purging inactive neighbor " << it->second.hostname 
-                     << " (last seen " << timeSinceLastSeen.count() << "s ago)" << std::endl;
+            std::cout << "DEBUG: Purging inactive neighbor " << it->second.hostname
+                      << " (last seen " << timeSinceLastSeen.count() << "s ago)" << std::endl;
             it = neighbors.erase(it);
         }
         else
