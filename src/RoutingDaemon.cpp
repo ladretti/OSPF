@@ -160,10 +160,7 @@ void RoutingDaemon::mainLoop()
     {
         auto loopStart = std::chrono::steady_clock::now();
 
-        // 1. Purger les voisins inactifs en premier
-        lsm->purgeInactiveNeighbors();
-
-        // 2. Hello optimisés avec intervalles adaptatifs
+        // 1. Hello optimisés avec intervalles adaptatifs AVANT de purger
         // Hello broadcast sur toutes les interfaces (pour découverte initiale)
         for (const auto &iface : interfaces)
         {
@@ -188,6 +185,13 @@ void RoutingDaemon::mainLoop()
                 pm->sendHello(neighbor, port, hostname, interfaces);
             }
         }
+
+        static int purgeCounter = 0;
+        if (purgeCounter % 5 == 0) // Purger seulement tous les 5 cycles
+        {
+            lsm->purgeInactiveNeighbors();
+        }
+        purgeCounter++;
 
         // 3. Créer le LSA actuel une seule fois
         auto activeNeighborHostnames = lsm->getActiveNeighborHostnames();

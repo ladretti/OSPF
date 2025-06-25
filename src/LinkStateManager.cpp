@@ -1,6 +1,7 @@
 // LinkStateManager.cpp
 #include "LinkStateManager.hpp"
 #include <chrono>
+#include <iostream>
 
 bool LinkStateManager::updateNeighbor(const std::string &neighborIp, const std::string &neighborHostname)
 {
@@ -58,10 +59,17 @@ std::vector<std::string> LinkStateManager::getActiveNeighbors() const
 void LinkStateManager::purgeInactiveNeighbors()
 {
     auto now = std::chrono::steady_clock::now();
-    for (auto it = neighbors.begin(); it != neighbors.end();)
+    auto it = neighbors.begin();
+
+    while (it != neighbors.end())
     {
-        if (now - it->second.lastSeen > std::chrono::seconds(30))
+        auto timeSinceLastSeen = std::chrono::duration_cast<std::chrono::seconds>(
+            now - it->second.lastSeen);
+
+        if (timeSinceLastSeen > std::chrono::seconds(30))
         {
+            std::cout << "DEBUG: Purging inactive neighbor " << it->second.hostname
+                      << " (last seen " << timeSinceLastSeen.count() << "s ago)" << std::endl;
             it = neighbors.erase(it);
         }
         else
