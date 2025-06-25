@@ -188,7 +188,6 @@ void RoutingDaemon::mainLoop()
         static int purgeCounter = 0;
         if (purgeCounter % 15 == 0) // Purger seulement tous les 30 cycles !!
         {
-            std::cout << "DEBUG " << hostname << " - Purging inactive neighbors..." << std::endl;
             lsm->purgeInactiveNeighbors();
         }
         purgeCounter++;
@@ -215,18 +214,6 @@ void RoutingDaemon::mainLoop()
 
         if (neighborsChanged || ipsChanged)
         {
-            if (!isFirstRun) // Éviter le spam initial
-            {
-                std::cout << "DEBUG " << hostname << " topology change detected:" << std::endl;
-                std::cout << "  Neighbors: [";
-                for (const auto &neighbor : neighbors)
-                    std::cout << neighbor << " ";
-                std::cout << "] vs [";
-                for (const auto &neighbor : lastNeighbors)
-                    std::cout << neighbor << " ";
-                std::cout << "]" << std::endl;
-            }
-
             stableCount = 0; // Reset stabilité
             isFirstRun = false;
         }
@@ -242,9 +229,6 @@ void RoutingDaemon::mainLoop()
         // ======= PHASE 4: ATTENTE DE STABILITÉ =======
         if (stableCount < 5) // Augmenter le seuil à 5 cycles
         {
-            std::cout << "DEBUG " << hostname << " waiting for stability ("
-                      << stableCount << "/5)" << std::endl;
-
             std::this_thread::sleep_for(std::chrono::milliseconds(3000)); // 3 secondes
             continue;
         }
@@ -265,10 +249,6 @@ void RoutingDaemon::mainLoop()
         lastLSANeighbors = neighbors;
         lastLSAActiveIPs = activeNeighborIPs;
 
-        std::cout << "DEBUG " << hostname << " STABLE - Creating LSA with neighbors: ";
-        for (const auto &neighbor : neighbors)
-            std::cout << neighbor << " ";
-        std::cout << std::endl;
 
         // Création du LSA (code existant)
         static int mySeq = 0;
@@ -321,7 +301,6 @@ void RoutingDaemon::mainLoop()
         }
         if (neighborsChanged || ipsChanged)
         {
-            std::cout << "DEBUG " << hostname << " - TRIGGERED FLOODING due to topology change" << std::endl;
 
             // Diffuser immédiatement tous les LSA connus
             for (const auto &[lsaHostname, lsa] : topoDb->lsaMap)
@@ -338,7 +317,6 @@ void RoutingDaemon::mainLoop()
 
         if (now - lastFloodTime > std::chrono::seconds(10)) // ← RÉDUIRE à 10 secondes
         {
-            std::cout << "DEBUG " << hostname << " - Flooding LSA database to neighbors" << std::endl;
 
             for (const auto &[lsaHostname, lsa] : topoDb->lsaMap)
             {
@@ -605,7 +583,6 @@ void RoutingDaemon::showRoutingMetrics() const
         std::cout << std::endl;
     }
 
-    // Debug du calcul de routage
     std::cout << "\n--- Routing Calculation Debug ---" << std::endl;
     auto routingTable = topoDb->computeRoutingTable(hostname);
     std::cout << "Routing table computed with " << routingTable.table.size() << " entries" << std::endl;

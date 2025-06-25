@@ -17,21 +17,51 @@ private:
 public:
     std::unordered_map<std::string, nlohmann::json> lsaMap;
 
-    bool updateLSA(const nlohmann::json &lsa)
+    bool TopologyDatabase::updateLSA(const json &lsa)
     {
         std::lock_guard<std::mutex> lock(lsaMutex);
 
-        if (lsa.contains("hostname") && lsa.contains("sequence_number"))
+        if (!lsa.contains("hostname") || !lsa.contains("sequence_number"))
         {
-            const std::string &host = lsa["hostname"];
-            int seq = lsa["sequence_number"];
-            if (!lsaMap.count(host) || lsaMap[host]["sequence_number"] < seq)
+            std::cout << "ERROR: Invalid LSA format" << std::endl;
+            return false;
+        }
+
+        std::string hostname = lsa["hostname"];
+        int newSeq = lsa["sequence_number"];
+
+        // ✅ DEBUG : Afficher les LSA reçus
+        std::cout << "DEBUG: Received LSA from " << hostname << " (seq=" << newSeq << ")" << std::endl;
+
+        auto it = lsaMap.find(hostname);
+        if (it != lsaMap.end())
+        {
+            int currentSeq = it->second["sequence_number"];
+            std::cout << "DEBUG: Current LSA seq=" << currentSeq << ", new seq=" << newSeq << std::endl;
+
+            if (newSeq <= currentSeq)
             {
-                lsaMap[host] = lsa;
-                return true;
+                std::cout << "DEBUG: Ignoring old LSA (seq " << newSeq << " <= " << currentSeq << ")" << std::endl;
+                return false; // LSA plus ancien ou identique
             }
         }
-        return false;
+
+        // Mettre à jour
+        lsaMap[hostname] = lsa;
+        std::cout << "DEBUG: Updated LSA for " << hostname << " (seq=" << newSeq << ")" << std::endl;
+
+        // ✅ DEBUG : Afficher le contenu du LSA
+        if (lsa.contains("neighbors"))
+        {
+            std::cout << "DEBUG: New neighbors: [";
+            for (const auto &neighbor : lsa["neighbors"])
+            {
+                std::cout << neighbor.get<std::string>() << " ";
+            }
+            std::cout << "]" << std::endl;
+        }
+
+        return true;
     }
 
     struct LinkInfo
@@ -46,9 +76,6 @@ public:
     {
         std::lock_guard<std::mutex> lock(lsaMutex);
 
-        // ✅ DEBUG : Afficher la base de données avant calcul
-        std::cout << "DEBUG: Computing routes for " << selfHostname << std::endl;
-        std::cout << "DEBUG: LSA Database state:" << std::endl;
         for (const auto &[hostname, lsa] : lsaMap)
         {
             std::cout << "  " << hostname << ": seq=" << lsa["sequence_number"].get<int>();
@@ -92,10 +119,6 @@ public:
                         link.weight = (1.0 / link.capacity) * 1000; // Normaliser
 
                         weightedGraph[hostname].push_back(link);
-
-                        // ✅ DEBUG : Afficher les liens ajoutés
-                        std::cout << "DEBUG: Added link " << hostname << " -> " << link.neighbor
-                                  << " (weight=" << link.weight << ")" << std::endl;
                     }
                 }
             }

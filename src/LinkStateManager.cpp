@@ -70,8 +70,6 @@ void LinkStateManager::purgeInactiveNeighbors()
         // TIMEOUT TRÈS GÉNÉREUX : 45 secondes au lieu de 10
         if (timeSinceLastSeen > std::chrono::seconds(45))
         {
-            std::cout << "DEBUG: Purging inactive neighbor " << it->second.hostname
-                      << " (last seen " << timeSinceLastSeen.count() << "s ago)" << std::endl;
             it = neighbors.erase(it);
         }
         else
