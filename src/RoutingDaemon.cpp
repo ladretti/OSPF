@@ -194,21 +194,81 @@ void RoutingDaemon::mainLoop()
         std::set<std::string> uniqueNeighbors(activeNeighborHostnames.begin(), activeNeighborHostnames.end());
         std::vector<std::string> neighbors(uniqueNeighbors.begin(), uniqueNeighbors.end());
 
-        std::cout << "DEBUG " << hostname << " detected neighbors: ";
-        for (const auto &neighbor : neighbors)
-        {
-            std::cout << neighbor << " ";
-        }
-        std::cout << std::endl;
+        // ✅ STABILISATION : Ne mettre à jour le LSA que si les voisins ont vraiment changé
+        static std::vector<std::string> lastNeighbors;
+        static std::vector<std::string> lastActiveIPs;
+        static int stableCount = 0;
 
-        // DEBUG : Afficher les IPs des voisins actifs
         auto activeNeighborIPs = lsm->getActiveNeighbors();
-        std::cout << "DEBUG " << hostname << " active neighbor IPs: ";
-        for (const auto &ip : activeNeighborIPs)
+
+        // Trier pour comparaison stable
+        std::sort(neighbors.begin(), neighbors.end());
+        std::sort(activeNeighborIPs.begin(), activeNeighborIPs.end());
+
+        bool neighborsChanged = (neighbors != lastNeighbors);
+        bool ipsChanged = (activeNeighborIPs != lastActiveIPs);
+
+        if (neighborsChanged || ipsChanged)
         {
-            std::cout << ip << " ";
+            std::cout << "DEBUG " << hostname << " topology change detected:" << std::endl;
+            std::cout << "  Neighbors: [";
+            for (const auto &neighbor : neighbors)
+            {
+                std::cout << neighbor << " ";
+            }
+            std::cout << "] vs [";
+            for (const auto &neighbor : lastNeighbors)
+            {
+                std::cout << neighbor << " ";
+            }
+            std::cout << "]" << std::endl;
+
+            std::cout << "  IPs: [";
+            for (const auto &ip : activeNeighborIPs)
+            {
+                std::cout << ip << " ";
+            }
+            std::cout << "] vs [";
+            for (const auto &ip : lastActiveIPs)
+            {
+                std::cout << ip << " ";
+            }
+            std::cout << "]" << std::endl;
+
+            stableCount = 0; // Reset compteur de stabilité
         }
-        std::cout << std::endl;
+        else
+        {
+            stableCount++;
+        }
+
+        // ✅ HYSTERESIS : Attendre 3 cycles stables avant de considérer comme stable
+        if (stableCount < 3)
+        {
+            std::cout << "DEBUG " << hostname << " waiting for stability (" << stableCount << "/3)" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            continue;
+        }
+
+        // Seulement maintenant, créer le LSA si nécessaire
+        if (neighborsChanged)
+        {
+            lastNeighbors = neighbors;
+            lastActiveIPs = activeNeighborIPs;
+
+            std::cout << "DEBUG " << hostname << " STABLE - Creating LSA with neighbors: ";
+            for (const auto &neighbor : neighbors)
+            {
+                std::cout << neighbor << " ";
+            }
+            std::cout << std::endl;
+        }
+        else
+        {
+            // Pas de changement, pas de nouveau LSA
+            std::this_thread::sleep_for(std::chrono::milliseconds(4000));
+            continue;
+        }
 
         static int mySeq = 0;
         std::vector<std::string> networks;
