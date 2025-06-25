@@ -246,7 +246,34 @@ void RoutingDaemon::mainLoop()
         if (stableCount < 3)
         {
             std::cout << "DEBUG " << hostname << " waiting for stability (" << stableCount << "/3)" << std::endl;
+
+            // ⚠️ CORRECTION CRITIQUE : Mettre à jour les références même pendant l'attente
+            lastNeighbors = neighbors;
+            lastActiveIPs = activeNeighborIPs;
+
             std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            continue;
+        }
+        static std::vector<std::string> lastLSANeighbors;
+        static std::vector<std::string> lastLSAActiveIPs;
+
+        bool needsNewLSA = (neighbors != lastLSANeighbors) || (activeNeighborIPs != lastLSAActiveIPs);
+        if (needsNewLSA)
+        {
+            lastLSANeighbors = neighbors;
+            lastLSAActiveIPs = activeNeighborIPs;
+
+            std::cout << "DEBUG " << hostname << " STABLE - Creating LSA with neighbors: ";
+            for (const auto &neighbor : neighbors)
+            {
+                std::cout << neighbor << " ";
+            }
+            std::cout << std::endl;
+        }
+        else
+        {
+            // Pas de changement, pas de nouveau LSA
+            std::this_thread::sleep_for(std::chrono::milliseconds(4000));
             continue;
         }
 
