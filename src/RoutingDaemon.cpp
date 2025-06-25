@@ -56,12 +56,12 @@ bool RoutingDaemon::start()
     }
 
     running.store(true);
+    networkStartTime = std::chrono::steady_clock::now(); // ← Nouveau
+    hasConverged = false;
 
-    // Start receiver thread
     receiverThread = std::thread([this]()
                                  { pm->receivePackets(port, *lsm, running, hostname, *topoDb); });
 
-    // Start main daemon thread
     daemonThread = std::thread(&RoutingDaemon::mainLoop, this);
 
     return true;
@@ -247,7 +247,7 @@ void RoutingDaemon::mainLoop()
         topoDb->updateLSA(currentLSA);
 
         // 6. Recalculer les routes seulement si nécessaire (triggered updates)
-        // 6. Recalculer les routes seulement si nécessaire (triggered updates)
+
         static std::map<std::string, std::string> lastRoutingTable;
         static bool firstRun = true;
 
@@ -279,6 +279,7 @@ void RoutingDaemon::mainLoop()
         // 7. Appliquer les routes seulement si elles ont changé
         if (routingTableChanged)
         {
+            recordTopologyChange();
             if (firstRun)
             {
                 firstRun = false; // ← IMPORTANT : Marquer la fin du premier run
@@ -349,6 +350,11 @@ void RoutingDaemon::mainLoop()
 
             // Sauvegarder la nouvelle table de routage
             lastRoutingTable = std::map<std::string, std::string>(newRoutingTable.table.begin(), newRoutingTable.table.end());
+            checkConvergence();
+        }
+        else
+        {
+            checkConvergence();
         }
 
         // 8. Sleep adaptatif basé sur la stabilité du réseau
@@ -453,6 +459,32 @@ void RoutingDaemon::showRoutingMetrics() const
     std::cout << "\n=== Routing Metrics ===" << std::endl;
     std::cout << "Router: " << hostname << std::endl;
 
+    // Nouvelles métriques de convergence
+    auto now = std::chrono::steady_clock::now();
+    auto uptime = std::chrono::duration_cast<std::chrono::seconds>(now - networkStartTime);
+
+    std::cout << "\n--- Convergence Metrics ---" << std::endl;
+    std::cout << "Network uptime: " << uptime.count() << " seconds" << std::endl;
+    std::cout << "Current state: " << (hasConverged ? "Converged" : "Converging") << std::endl;
+    std::cout << "Convergence events: " << convergenceCount << std::endl;
+
+    if (!convergenceTimes.empty())
+    {
+        std::cout << "Average convergence time: " << std::fixed << std::setprecision(2)
+                  << getAverageConvergenceTime() / 1000.0 << " seconds" << std::endl;
+        std::cout << "Last convergence time: " << std::fixed << std::setprecision(2)
+                  << convergenceTimes.back().count() / 1000.0 << " seconds" << std::endl;
+    }
+
+    if (!hasConverged && lastTopologyChangeTime != std::chrono::steady_clock::time_point{})
+    {
+        auto timeSinceChange = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastTopologyChangeTime);
+        std::cout << "Time since last change: " << std::fixed << std::setprecision(2)
+                  << timeSinceChange.count() / 1000.0 << " seconds" << std::endl;
+    }
+
+    std::cout << "\n--- Routing Table ---" << std::endl;
     auto routingTable = topoDb->computeRoutingTable(hostname);
 
     for (const auto &[dest, nextHop] : routingTable.table)
@@ -653,4 +685,54 @@ void RoutingDaemon::resetOptimizationStats()
     {
         pm->resetOptimizationCache();
     }
+}
+
+void RoutingDaemon::recordTopologyChange()
+{
+    lastTopologyChangeTime = std::chrono::steady_clock::now();
+    hasConverged = false;
+}
+
+void RoutingDaemon::checkConvergence()
+{
+    if (hasConverged)
+        return;
+
+    auto now = std::chrono::steady_clock::now();
+
+    // Critères de convergence : pas de changement depuis X secondes
+    auto timeSinceLastChange = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now - lastTopologyChangeTime);
+
+    // Considérer comme convergé si stable depuis 10 secondes
+    if (timeSinceLastChange >= std::chrono::milliseconds(10000))
+    {
+        hasConverged = true;
+        lastConvergenceTime = now;
+        convergenceCount++;
+
+        // Calculer le temps de convergence depuis le dernier changement
+        auto convergenceTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            lastConvergenceTime - lastTopologyChangeTime);
+        convergenceTimes.push_back(convergenceTime);
+
+        // Garder seulement les 10 derniers temps de convergence
+        if (convergenceTimes.size() > 10)
+        {
+            convergenceTimes.erase(convergenceTimes.begin());
+        }
+    }
+}
+
+double RoutingDaemon::getAverageConvergenceTime() const
+{
+    if (convergenceTimes.empty())
+        return 0.0;
+
+    double total = 0.0;
+    for (const auto &time : convergenceTimes)
+    {
+        total += time.count();
+    }
+    return total / convergenceTimes.size();
 }

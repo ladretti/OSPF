@@ -47,4 +47,16 @@ private:
 
     std::vector<double> getLinkCapabilities() const;
     std::vector<bool> getLinkStates() const;
+
+    std::chrono::steady_clock::time_point networkStartTime;
+    std::chrono::steady_clock::time_point lastConvergenceTime;
+    std::chrono::steady_clock::time_point lastTopologyChangeTime;
+    bool hasConverged = false;
+    int convergenceCount = 0;
+    std::vector<std::chrono::milliseconds> convergenceTimes;
+
+    // Méthodes pour les métriques de convergence
+    void recordTopologyChange();
+    void checkConvergence();
+    double getAverageConvergenceTime() const;
 };
