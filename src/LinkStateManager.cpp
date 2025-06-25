@@ -60,16 +60,17 @@ void LinkStateManager::purgeInactiveNeighbors()
 {
     auto now = std::chrono::steady_clock::now();
     auto it = neighbors.begin();
-
+    
     while (it != neighbors.end())
     {
         auto timeSinceLastSeen = std::chrono::duration_cast<std::chrono::seconds>(
             now - it->second.lastSeen);
-
-        if (timeSinceLastSeen > std::chrono::seconds(30))
+        
+        // TIMEOUT TRÈS GÉNÉREUX : 45 secondes au lieu de 10
+        if (timeSinceLastSeen > std::chrono::seconds(45))
         {
-            std::cout << "DEBUG: Purging inactive neighbor " << it->second.hostname
-                      << " (last seen " << timeSinceLastSeen.count() << "s ago)" << std::endl;
+            std::cout << "DEBUG: Purging inactive neighbor " << it->second.hostname 
+                     << " (last seen " << timeSinceLastSeen.count() << "s ago)" << std::endl;
             it = neighbors.erase(it);
         }
         else

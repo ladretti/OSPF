@@ -160,25 +160,23 @@ void RoutingDaemon::mainLoop()
     {
         auto loopStart = std::chrono::steady_clock::now();
 
-        // 1. Hello optimisés avec intervalles adaptatifs AVANT de purger
-        // Hello broadcast sur toutes les interfaces (pour découverte initiale)
-        for (const auto &iface : interfaces)
+        // ======= PHASE 1: COMMUNICATION =======
+        // 1. Hello broadcast (découverte initiale) - TRÈS réduit
+        static int broadcastCounter = 0;
+        if (broadcastCounter % 10 == 0) // Seulement tous les 10 cycles
         {
-            std::string broadcastAddr = calculateBroadcastAddress(iface);
-            // Hello broadcast moins fréquent si réseau stable
-            static int broadcastCounter = 0;
-            if (broadcastCounter % 3 == 0) // Tous les 3 cycles au lieu de chaque cycle
+            for (const auto &iface : interfaces)
             {
+                std::string broadcastAddr = calculateBroadcastAddress(iface);
                 pm->sendHello(broadcastAddr, port, hostname, interfaces);
             }
-            broadcastCounter++;
         }
+        broadcastCounter++;
 
-        // Hello unicast adaptatifs aux voisins connus
+        // 2. Hello unicast aux voisins connus - PRIORITAIRE
         auto activeNeighbors = lsm->getActiveNeighbors();
         for (const auto &neighbor : activeNeighbors)
         {
-            // Utiliser l'intervalle adaptatif pour chaque voisin
             int adaptiveInterval = lsm->getAdaptiveHelloInterval(neighbor);
             if (pm->shouldSendHello(neighbor, adaptiveInterval))
             {
@@ -186,78 +184,72 @@ void RoutingDaemon::mainLoop()
             }
         }
 
+        // ======= PHASE 2: NETTOYAGE (TRÈS PRUDENT) =======
         static int purgeCounter = 0;
-        if (purgeCounter % 5 == 0) // Purger seulement tous les 5 cycles
+        if (purgeCounter % 15 == 0) // Purger seulement tous les 15 cycles !!
         {
+            std::cout << "DEBUG " << hostname << " - Purging inactive neighbors..." << std::endl;
             lsm->purgeInactiveNeighbors();
         }
         purgeCounter++;
 
-        // 3. Créer le LSA actuel une seule fois
+        // ======= PHASE 3: DÉTECTION DE STABILITÉ =======
         auto activeNeighborHostnames = lsm->getActiveNeighborHostnames();
         std::set<std::string> uniqueNeighbors(activeNeighborHostnames.begin(), activeNeighborHostnames.end());
         std::vector<std::string> neighbors(uniqueNeighbors.begin(), uniqueNeighbors.end());
-
-        // ✅ STABILISATION : Ne mettre à jour le LSA que si les voisins ont vraiment changé
-        static std::vector<std::string> lastNeighbors;
-        static std::vector<std::string> lastActiveIPs;
-        static int stableCount = 0;
-
         auto activeNeighborIPs = lsm->getActiveNeighbors();
 
         // Trier pour comparaison stable
         std::sort(neighbors.begin(), neighbors.end());
         std::sort(activeNeighborIPs.begin(), activeNeighborIPs.end());
 
+        // Variables static pour la stabilité
+        static std::vector<std::string> lastNeighbors;
+        static std::vector<std::string> lastActiveIPs;
+        static int stableCount = 0;
+        static bool isFirstRun = true;
+
+        // Détection des changements
         bool neighborsChanged = (neighbors != lastNeighbors);
         bool ipsChanged = (activeNeighborIPs != lastActiveIPs);
 
         if (neighborsChanged || ipsChanged)
         {
-            std::cout << "DEBUG " << hostname << " topology change detected:" << std::endl;
-            std::cout << "  Neighbors: [";
-            for (const auto &neighbor : neighbors)
+            if (!isFirstRun) // Éviter le spam initial
             {
-                std::cout << neighbor << " ";
+                std::cout << "DEBUG " << hostname << " topology change detected:" << std::endl;
+                std::cout << "  Neighbors: [";
+                for (const auto &neighbor : neighbors)
+                    std::cout << neighbor << " ";
+                std::cout << "] vs [";
+                for (const auto &neighbor : lastNeighbors)
+                    std::cout << neighbor << " ";
+                std::cout << "]" << std::endl;
             }
-            std::cout << "] vs [";
-            for (const auto &neighbor : lastNeighbors)
-            {
-                std::cout << neighbor << " ";
-            }
-            std::cout << "]" << std::endl;
 
-            std::cout << "  IPs: [";
-            for (const auto &ip : activeNeighborIPs)
-            {
-                std::cout << ip << " ";
-            }
-            std::cout << "] vs [";
-            for (const auto &ip : lastActiveIPs)
-            {
-                std::cout << ip << " ";
-            }
-            std::cout << "]" << std::endl;
-
-            stableCount = 0; // Reset compteur de stabilité
+            stableCount = 0; // Reset stabilité
+            isFirstRun = false;
         }
         else
         {
             stableCount++;
         }
 
-        // ✅ HYSTERESIS : Attendre 3 cycles stables avant de considérer comme stable
-        if (stableCount < 3)
+        // TOUJOURS mettre à jour les références
+        lastNeighbors = neighbors;
+        lastActiveIPs = activeNeighborIPs;
+
+        // ======= PHASE 4: ATTENTE DE STABILITÉ =======
+        if (stableCount < 5) // Augmenter le seuil à 5 cycles
         {
-            std::cout << "DEBUG " << hostname << " waiting for stability (" << stableCount << "/3)" << std::endl;
+            std::cout << "DEBUG " << hostname << " waiting for stability ("
+                      << stableCount << "/5)" << std::endl;
 
-            // ⚠️ CORRECTION CRITIQUE : Mettre à jour les références même pendant l'attente
-            lastNeighbors = neighbors;
-            lastActiveIPs = activeNeighborIPs;
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            std::this_thread::sleep_for(std::chrono::milliseconds(3000)); // 3 secondes
             continue;
         }
+
+        // ======= PHASE 5: CRÉATION ET ENVOI LSA =======
         static std::vector<std::string> lastLSANeighbors;
         static std::vector<std::string> lastLSAActiveIPs;
 
@@ -265,22 +257,20 @@ void RoutingDaemon::mainLoop()
 
         if (!needsNewLSA)
         {
-            // Pas de changement, pas de nouveau LSA
-            std::this_thread::sleep_for(std::chrono::milliseconds(4000));
+            std::this_thread::sleep_for(std::chrono::milliseconds(5000)); // 5 secondes
             continue;
         }
 
-        // Seulement maintenant, créer le LSA
+        // Créer et envoyer le LSA
         lastLSANeighbors = neighbors;
         lastLSAActiveIPs = activeNeighborIPs;
 
         std::cout << "DEBUG " << hostname << " STABLE - Creating LSA with neighbors: ";
         for (const auto &neighbor : neighbors)
-        {
             std::cout << neighbor << " ";
-        }
         std::cout << std::endl;
 
+        // Création du LSA (code existant)
         static int mySeq = 0;
         std::vector<std::string> networks;
         for (const auto &iface : interfaces)
@@ -324,27 +314,24 @@ void RoutingDaemon::mainLoop()
         std::string hmac = computeHMAC(lsaStr, "rreNofDO7Bdd9xObfMAbC1pDOhpRR9BX7FTk512YV");
         currentLSA["hmac"] = toHex(hmac);
 
-        // 4. Envoyer LSA optimisés (différentiels/compressés) aux voisins
+        // Envoyer LSA aux voisins actifs
         for (const auto &neighbor : activeNeighbors)
         {
             pm->sendOptimizedLSA(neighbor, port, currentLSA, hostname);
         }
 
-        // 5. Mettre à jour la topologie locale
+        // Mettre à jour la topologie locale
         topoDb->updateLSA(currentLSA);
 
-        // 6. Recalculer les routes seulement si nécessaire (triggered updates)
-
+        // ======= PHASE 6: CALCUL DES ROUTES =======
         static std::map<std::string, std::string> lastRoutingTable;
-        static bool firstRun = true;
+        static bool firstRoutingRun = true;
 
         auto newRoutingTable = topoDb->computeRoutingTable(hostname);
+        bool routingTableChanged = firstRoutingRun;
 
-        bool routingTableChanged = firstRun; // Force au premier run
-
-        if (!firstRun)
+        if (!firstRoutingRun)
         {
-            // Logique existante seulement si ce n'est pas le premier run
             if (newRoutingTable.table.size() != lastRoutingTable.size())
             {
                 routingTableChanged = true;
@@ -363,34 +350,27 @@ void RoutingDaemon::mainLoop()
             }
         }
 
-        // 7. Appliquer les routes seulement si elles ont changé
         if (routingTableChanged)
         {
             recordTopologyChange();
-            if (firstRun)
-            {
-                firstRun = false; // ← IMPORTANT : Marquer la fin du premier run
-            }
+            if (firstRoutingRun)
+                firstRoutingRun = false;
 
+            // Appliquer les routes (code existant)
             for (const auto &[dest, nextHop] : newRoutingTable.table)
             {
-
                 if (nextHop == "local" || nextHop == hostname)
-                {
                     continue;
-                }
                 if (dest.find('/') == std::string::npos)
-                {
                     continue;
-                }
 
                 std::string nextHopIp = "";
                 std::string iface = "";
 
+                // Code existant pour résoudre nextHopIp et iface...
                 auto lsaIt = topoDb->lsaMap.find(nextHop);
                 if (lsaIt != topoDb->lsaMap.end() && lsaIt->second.contains("interfaces"))
                 {
-                    // ...existing code pour résoudre nextHopIp et iface...
                     const auto &nextHopIfaces = lsaIt->second["interfaces"];
                     for (size_t i = 0; i < interfaces.size(); ++i)
                     {
@@ -430,12 +410,8 @@ void RoutingDaemon::mainLoop()
                 {
                     addRoute(dest, nextHopIp, iface);
                 }
-                else
-                {
-                }
             }
 
-            // Sauvegarder la nouvelle table de routage
             lastRoutingTable = std::map<std::string, std::string>(newRoutingTable.table.begin(), newRoutingTable.table.end());
             checkConvergence();
         }
@@ -444,15 +420,10 @@ void RoutingDaemon::mainLoop()
             checkConvergence();
         }
 
-        // 8. Sleep adaptatif basé sur la stabilité du réseau
-        int sleepTime = getAdaptiveSleepTime();
-
-        // Calculer le temps déjà écoulé dans cette boucle
+        // ======= PHASE 7: SLEEP FINAL =======
         auto loopEnd = std::chrono::steady_clock::now();
         auto loopDuration = std::chrono::duration_cast<std::chrono::milliseconds>(loopEnd - loopStart).count();
-
-        // Ajuster le sleep pour maintenir un timing cohérent
-        int remainingSleep = std::max(1000, sleepTime - static_cast<int>(loopDuration)); // Minimum 1s
+        int remainingSleep = std::max(2000, 4000 - static_cast<int>(loopDuration)); // Minimum 2s
 
         std::this_thread::sleep_for(std::chrono::milliseconds(remainingSleep));
     }
