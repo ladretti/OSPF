@@ -7,14 +7,20 @@
 #include "RoutingTable.hpp"
 #include <set>
 #include <queue>
+#include <mutex>
 
 class TopologyDatabase
 {
+private:
+    mutable std::mutex lsaMutex;
+
 public:
     std::unordered_map<std::string, nlohmann::json> lsaMap;
 
     bool updateLSA(const nlohmann::json &lsa)
     {
+        std::lock_guard<std::mutex> lock(lsaMutex);
+
         if (lsa.contains("hostname") && lsa.contains("sequence_number"))
         {
             const std::string &host = lsa["hostname"];
@@ -45,6 +51,8 @@ public:
         {
             if (lsa.contains("neighbors") && lsa.contains("link_capacities") && lsa.contains("link_states"))
             {
+                std::lock_guard<std::mutex> lock(lsaMutex);
+
                 const auto &neighbors = lsa["neighbors"];
                 const auto &capacities = lsa["link_capacities"];
                 const auto &states = lsa["link_states"];

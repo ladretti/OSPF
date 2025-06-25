@@ -484,9 +484,41 @@ void RoutingDaemon::showRoutingMetrics() const
                   << timeSinceChange.count() / 1000.0 << " seconds" << std::endl;
     }
 
-    std::cout << "\n--- Routing Table ---" << std::endl;
-    auto routingTable = topoDb->computeRoutingTable(hostname);
+    // Ajout d'informations détaillées sur la base de données LSA
+    std::cout << "\n--- LSA Database ---" << std::endl;
+    std::cout << "Known LSAs: " << topoDb->lsaMap.size() << std::endl;
+    for (const auto &[hostname_lsa, lsa] : topoDb->lsaMap)
+    {
+        std::cout << "  " << hostname_lsa << ": seq=" << lsa["sequence_number"].get<int>();
+        if (lsa.contains("networks"))
+        {
+            std::cout << ", networks=" << lsa["networks"].size();
+            std::cout << " [";
+            for (const auto &net : lsa["networks"])
+            {
+                std::cout << net.get<std::string>() << " ";
+            }
+            std::cout << "]";
+        }
+        if (lsa.contains("neighbors"))
+        {
+            std::cout << ", neighbors=" << lsa["neighbors"].size();
+            std::cout << " [";
+            for (const auto &neighbor : lsa["neighbors"])
+            {
+                std::cout << neighbor.get<std::string>() << " ";
+            }
+            std::cout << "]";
+        }
+        std::cout << std::endl;
+    }
 
+    // Debug du calcul de routage
+    std::cout << "\n--- Routing Calculation Debug ---" << std::endl;
+    auto routingTable = topoDb->computeRoutingTable(hostname);
+    std::cout << "Routing table computed with " << routingTable.table.size() << " entries" << std::endl;
+
+    std::cout << "\n--- Routing Table ---" << std::endl;
     for (const auto &[dest, nextHop] : routingTable.table)
     {
         std::cout << "Destination: " << dest << " -> Next Hop: " << nextHop << std::endl;
