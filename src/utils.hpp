@@ -45,15 +45,15 @@ inline std::string toHex(const std::string &input)
     return oss.str();
 }
 
-void RoutingDaemon::addRoute(const std::string &dest, const std::string &nextHop, const std::string &iface)
+inline void addRoute(const std::string &dest, const std::string &nextHop, const std::string &iface)
 {
     std::cout << "DEBUG addRoute: dest=" << dest << ", nextHop=" << nextHop << ", iface=" << iface << std::endl;
-
+    
     std::string command = "ip route replace " + dest + " via " + nextHop + " dev " + iface;
     std::cout << "DEBUG executing: " << command << std::endl;
-
+    
     int result = std::system(command.c_str());
-
+    
     if (result == 0)
     {
         std::cout << "DEBUG Route added successfully: " << dest << " via " << nextHop << " dev " << iface << std::endl;
@@ -63,6 +63,7 @@ void RoutingDaemon::addRoute(const std::string &dest, const std::string &nextHop
         std::cout << "ERROR Failed to add route: " << command << " (exit code: " << result << ")" << std::endl;
     }
 }
+
 inline std::vector<std::pair<std::string, std::string>> getLocalIpInterfaceMapping()
 {
     std::vector<std::pair<std::string, std::string>> result;
