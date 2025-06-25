@@ -45,6 +45,25 @@ public:
     RoutingTable computeRoutingTable(const std::string &selfHostname) const
     {
         std::lock_guard<std::mutex> lock(lsaMutex);
+
+        // ✅ DEBUG : Afficher la base de données avant calcul
+        std::cout << "DEBUG: Computing routes for " << selfHostname << std::endl;
+        std::cout << "DEBUG: LSA Database state:" << std::endl;
+        for (const auto &[hostname, lsa] : lsaMap)
+        {
+            std::cout << "  " << hostname << ": seq=" << lsa["sequence_number"].get<int>();
+            if (lsa.contains("neighbors"))
+            {
+                std::cout << ", neighbors=[";
+                for (const auto &neighbor : lsa["neighbors"])
+                {
+                    std::cout << neighbor.get<std::string>() << " ";
+                }
+                std::cout << "]";
+            }
+            std::cout << std::endl;
+        }
+
         // Graphe: hostname -> voisins (vector<string>)
         std::unordered_map<std::string, std::vector<LinkInfo>> weightedGraph;
 
@@ -52,7 +71,6 @@ public:
         {
             if (lsa.contains("neighbors") && lsa.contains("link_capacities") && lsa.contains("link_states"))
             {
-
                 const auto &neighbors = lsa["neighbors"];
                 const auto &capacities = lsa["link_capacities"];
                 const auto &states = lsa["link_states"];
@@ -74,6 +92,10 @@ public:
                         link.weight = (1.0 / link.capacity) * 1000; // Normaliser
 
                         weightedGraph[hostname].push_back(link);
+
+                        // ✅ DEBUG : Afficher les liens ajoutés
+                        std::cout << "DEBUG: Added link " << hostname << " -> " << link.neighbor
+                                  << " (weight=" << link.weight << ")" << std::endl;
                     }
                 }
             }

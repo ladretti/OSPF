@@ -186,7 +186,7 @@ void RoutingDaemon::mainLoop()
 
         // ======= PHASE 2: NETTOYAGE (TRÈS PRUDENT) =======
         static int purgeCounter = 0;
-        if (purgeCounter % 30 == 0) // Purger seulement tous les 30 cycles !!
+        if (purgeCounter % 15 == 0) // Purger seulement tous les 30 cycles !!
         {
             std::cout << "DEBUG " << hostname << " - Purging inactive neighbors..." << std::endl;
             lsm->purgeInactiveNeighbors();
