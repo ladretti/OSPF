@@ -35,7 +35,7 @@ std::vector<std::string> LinkStateManager::getActiveNeighborHostnames() const
     for (const auto &[ip, info] : neighbors)
     {
         // ✅ UTILISER LE MÊME TIMEOUT que purgeInactiveNeighbors()
-        if (now - info.lastSeen < std::chrono::seconds(45) && !info.hostname.empty())
+        if (now - info.lastSeen < std::chrono::seconds(30) && !info.hostname.empty())
         {
             hostnames.push_back(info.hostname);
         }
@@ -50,7 +50,7 @@ std::vector<std::string> LinkStateManager::getActiveNeighbors() const
     for (const auto &[ip, info] : neighbors)
     {
         // ✅ UTILISER LE MÊME TIMEOUT que purgeInactiveNeighbors()
-        if (now - info.lastSeen < std::chrono::seconds(45))
+        if (now - info.lastSeen < std::chrono::seconds(30))
         {
             active.push_back(ip);
         }
@@ -68,7 +68,7 @@ void LinkStateManager::purgeInactiveNeighbors()
             now - it->second.lastSeen);
 
         // TIMEOUT TRÈS GÉNÉREUX : 45 secondes au lieu de 10
-        if (timeSinceLastSeen > std::chrono::seconds(45))
+        if (timeSinceLastSeen > std::chrono::seconds(30))
         {
             it = neighbors.erase(it);
         }
