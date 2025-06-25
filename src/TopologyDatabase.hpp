@@ -27,18 +27,6 @@ public:
             int seq = lsa["sequence_number"];
             if (!lsaMap.count(host) || lsaMap[host]["sequence_number"] < seq)
             {
-                // Debug : afficher les changements LSA
-                if (lsaMap.count(host))
-                {
-                    std::cout << "LSA UPDATE: " << host << " seq "
-                              << lsaMap[host]["sequence_number"].get<int>()
-                              << " -> " << seq << std::endl;
-                }
-                else
-                {
-                    std::cout << "LSA NEW: " << host << " seq " << seq << std::endl;
-                }
-
                 lsaMap[host] = lsa;
                 return true;
             }

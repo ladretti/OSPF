@@ -194,6 +194,22 @@ void RoutingDaemon::mainLoop()
         std::set<std::string> uniqueNeighbors(activeNeighborHostnames.begin(), activeNeighborHostnames.end());
         std::vector<std::string> neighbors(uniqueNeighbors.begin(), uniqueNeighbors.end());
 
+        std::cout << "DEBUG " << hostname << " detected neighbors: ";
+        for (const auto &neighbor : neighbors)
+        {
+            std::cout << neighbor << " ";
+        }
+        std::cout << std::endl;
+
+        // DEBUG : Afficher les IPs des voisins actifs
+        auto activeNeighborIPs = lsm->getActiveNeighbors();
+        std::cout << "DEBUG " << hostname << " active neighbor IPs: ";
+        for (const auto &ip : activeNeighborIPs)
+        {
+            std::cout << ip << " ";
+        }
+        std::cout << std::endl;
+
         static int mySeq = 0;
         std::vector<std::string> networks;
         for (const auto &iface : interfaces)
