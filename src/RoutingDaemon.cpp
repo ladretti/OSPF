@@ -262,44 +262,24 @@ void RoutingDaemon::mainLoop()
         static std::vector<std::string> lastLSAActiveIPs;
 
         bool needsNewLSA = (neighbors != lastLSANeighbors) || (activeNeighborIPs != lastLSAActiveIPs);
-        if (needsNewLSA)
-        {
-            lastLSANeighbors = neighbors;
-            lastLSAActiveIPs = activeNeighborIPs;
 
-            std::cout << "DEBUG " << hostname << " STABLE - Creating LSA with neighbors: ";
-            for (const auto &neighbor : neighbors)
-            {
-                std::cout << neighbor << " ";
-            }
-            std::cout << std::endl;
-        }
-        else
+        if (!needsNewLSA)
         {
             // Pas de changement, pas de nouveau LSA
             std::this_thread::sleep_for(std::chrono::milliseconds(4000));
             continue;
         }
 
-        // Seulement maintenant, créer le LSA si nécessaire
-        if (neighborsChanged)
-        {
-            lastNeighbors = neighbors;
-            lastActiveIPs = activeNeighborIPs;
+        // Seulement maintenant, créer le LSA
+        lastLSANeighbors = neighbors;
+        lastLSAActiveIPs = activeNeighborIPs;
 
-            std::cout << "DEBUG " << hostname << " STABLE - Creating LSA with neighbors: ";
-            for (const auto &neighbor : neighbors)
-            {
-                std::cout << neighbor << " ";
-            }
-            std::cout << std::endl;
-        }
-        else
+        std::cout << "DEBUG " << hostname << " STABLE - Creating LSA with neighbors: ";
+        for (const auto &neighbor : neighbors)
         {
-            // Pas de changement, pas de nouveau LSA
-            std::this_thread::sleep_for(std::chrono::milliseconds(4000));
-            continue;
+            std::cout << neighbor << " ";
         }
+        std::cout << std::endl;
 
         static int mySeq = 0;
         std::vector<std::string> networks;
